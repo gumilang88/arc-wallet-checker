@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Arc Testnet — Wallet Health Checker</title>
 <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
-<script src="contracts.js"></script>
+<script src="contracts.js?v=2"></script>
 <style>
   :root {
     --page-bg: radial-gradient(1200px 600px at 50% -10%, #101d30 0%, #070a10 60%);
@@ -725,6 +725,7 @@
     }
   }
   async function deployFactory() {
+    if (!window.ARC_CONTRACTS || !ARC_CONTRACTS.factory) { return actStatus("Contracts not loaded (stale cache). Hard-refresh with <b>Ctrl+Shift+R</b> and try again.", "err"); }
     const signer = await getSigner(); if (!signer) return;
     actBusy(true);
     try {
