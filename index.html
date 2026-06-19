@@ -248,8 +248,16 @@
   .nft-cap small { color: var(--muted); }
   .nft-more { display: flex; justify-content: center; margin-top: 12px; }
   .nft-more:empty { margin-top: 0; }
-  .more-btn { background: var(--panel-2); border: 1px solid var(--border); color: var(--text); border-radius: 999px; padding: 8px 18px; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: border-color .2s ease, transform .15s ease; }
-  .more-btn:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .more-btn { display: inline-flex; align-items: center; gap: 8px; background: var(--panel-2); border: 1px solid var(--border); color: var(--text); border-radius: 999px; padding: 8px 18px; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: border-color .2s ease, transform .15s ease, box-shadow .2s ease, background .2s ease; }
+  .more-btn:hover { border-color: var(--accent); transform: translateY(-1px); box-shadow: 0 6px 18px rgba(79,157,255,0.18); background: color-mix(in srgb, var(--accent) 10%, var(--panel-2)); }
+  .more-btn:active { transform: translateY(0); }
+  .more-caret { display: inline-block; transition: transform .3s cubic-bezier(.2,.7,.2,1); font-size: 0.8rem; color: var(--muted); }
+  .more-btn.up .more-caret { transform: rotate(180deg); }
+  @keyframes nftIn { from { opacity: 0; transform: translateY(12px) scale(.94); } to { opacity: 1; transform: none; } }
+  @keyframes nftOut { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(8px) scale(.94); } }
+  .nft-tile.nft-in { animation: nftIn .4s cubic-bezier(.2,.7,.2,1) both; }
+  .nft-tile.nft-out { animation: nftOut .26s ease both; pointer-events: none; }
+  @media (prefers-reduced-motion: reduce) { .nft-tile.nft-in, .nft-tile.nft-out { animation: none; } .more-caret { transition: none; } }
 
   .tx-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border); }
   .tx-row:first-of-type { border-top: none; }
@@ -692,17 +700,36 @@
   function renderGallery(items) {
     galleryItems = items; galleryExpanded = false;
     $("nftGalCount").textContent = items.length;
-    drawGallery();
-  }
-  function drawGallery() {
     const box = $("nftGrid"), wrap = $("nftMoreWrap");
-    if (!galleryItems.length) { box.innerHTML = '<div class="empty-note">No NFTs held.</div>'; wrap.innerHTML = ""; return; }
-    const shown = galleryExpanded ? galleryItems : galleryItems.slice(0, NFT_PREVIEW);
-    box.innerHTML = shown.map(nftTile).join("");
-    if (galleryItems.length > NFT_PREVIEW) {
-      wrap.innerHTML = `<button class="more-btn" id="nftMore" type="button">${galleryExpanded ? "Show less ▲" : `Show all ${galleryItems.length} ▼`}</button>`;
-      $("nftMore").addEventListener("click", () => { galleryExpanded = !galleryExpanded; drawGallery(); });
-    } else wrap.innerHTML = "";
+    if (!items.length) { box.innerHTML = '<div class="empty-note">No NFTs held.</div>'; wrap.innerHTML = ""; return; }
+    box.innerHTML = items.slice(0, NFT_PREVIEW).map(nftTile).join("");
+    updateMoreBtn();
+  }
+  function updateMoreBtn() {
+    const wrap = $("nftMoreWrap");
+    if (galleryItems.length <= NFT_PREVIEW) { wrap.innerHTML = ""; return; }
+    wrap.innerHTML = `<button class="more-btn ${galleryExpanded ? "up" : ""}" id="nftMore" type="button"><span>${galleryExpanded ? "Show less" : "Show all " + galleryItems.length}</span><span class="more-caret">▾</span></button>`;
+    $("nftMore").addEventListener("click", toggleGallery);
+  }
+  function toggleGallery() {
+    const box = $("nftGrid");
+    if (!galleryExpanded) {
+      galleryExpanded = true;
+      const tmp = document.createElement("div");
+      tmp.innerHTML = galleryItems.slice(NFT_PREVIEW).map(nftTile).join("");
+      Array.from(tmp.children).forEach((el, i) => {
+        el.classList.add("nft-in");
+        el.style.animationDelay = (i * 0.04).toFixed(2) + "s";
+        box.appendChild(el);
+      });
+    } else {
+      galleryExpanded = false;
+      Array.from(box.children).slice(NFT_PREVIEW).forEach((el) => {
+        el.classList.add("nft-out");
+        el.addEventListener("animationend", () => el.remove(), { once: true });
+      });
+    }
+    updateMoreBtn();
   }
 
   function timeAgo(iso) {
