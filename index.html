@@ -451,11 +451,6 @@
       </div>
     </div>
 
-    <div class="section" style="--acc:#f1c40f">
-      <div class="clabel">🏅 Achievements (<span id="badgeCount">0</span>/<span id="badgeTotal">0</span>)</div>
-      <div class="badges" id="badges"></div>
-    </div>
-
     <div class="cards">
       <div class="card" style="--acc:#2ecc71">
         <div class="clabel">Native Balance</div>
@@ -525,6 +520,11 @@
     <div class="section" style="--acc:#22d3ee">
       <div class="clabel">📊 Transaction Quality</div>
       <div class="qgrid" id="qGrid"></div>
+    </div>
+
+    <div class="section" style="--acc:#f1c40f">
+      <div class="clabel">🏅 Achievements (<span id="badgeCount">0</span>/<span id="badgeTotal">0</span>)</div>
+      <div class="badges" id="badges"></div>
     </div>
 
     <div class="section" style="--acc:#2ecc71">
@@ -1014,14 +1014,14 @@
     const nft = ctx.assets.nfts.reduce((s, n) => s + (n.count || 1), 0);
     const ageDays = st.firstMs ? (Date.now() - st.firstMs) / 86400000 : 0;
     const idleDays = st.lastMs ? (Date.now() - st.lastMs) / 86400000 : Infinity;
-    const deployed = ctx.txs.some((t) => t.created_contract || /create|deploy/i.test(t.method || ""));
+    const deployCount = ctx.txs.filter((t) => t.created_contract || /create|deploy/i.test(t.method || "")).length;
     const defs = [
-      { ic: "🏭", n: "Deployer", d: "Deployed a contract", on: deployed },
-      { ic: "⚡", n: "Active Trader", d: "25+ transactions", on: txTotal >= 25 },
+      { ic: "🏭", n: "Deployer", d: "Deployed 10+ contracts", on: deployCount >= 10 },
+      { ic: "⚡", n: "Active Trader", d: "500+ transactions", on: txTotal >= 500 },
       { ic: "🎖️", n: "Veteran", d: "30+ days old", on: ageDays >= 30 },
       { ic: "🧺", n: "Diversified", d: "Holds 3+ tokens", on: tokens >= 3 },
       { ic: "🖼️", n: "Collector", d: "Holds an NFT", on: nft >= 1 },
-      { ic: "✅", n: "Reliable", d: "5+ txs, 0 failed", on: st.n >= 5 && st.failed === 0 },
+      { ic: "✅", n: "Reliable", d: "25+ txs, 0 failed", on: txTotal >= 25 && st.failed === 0 },
       { ic: "🤝", n: "Connector", d: "10+ counterparties", on: st.peers >= 10 },
       { ic: "🔥", n: "Fresh Activity", d: "Active within 24h", on: idleDays < 1 },
     ];
