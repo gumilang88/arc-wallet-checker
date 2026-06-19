@@ -42,6 +42,11 @@
   }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
+  /* inline line-icons */
+  .ico { display: inline-flex; align-items: center; justify-content: center; flex: none; }
+  .ico svg { width: 1.05em; height: 1.05em; display: block; }
+  .clabel .ico { color: var(--acc, var(--accent)); }
+  .clabel { display: flex; align-items: center; gap: 7px; }
   body {
     margin: 0;
     font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -101,7 +106,7 @@
   .appbar-inner { max-width: 980px; margin: 0 auto; height: 60px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .brand { display: flex; align-items: center; gap: 9px; font-size: 1.02rem; font-weight: 600; color: var(--text); text-decoration: none; letter-spacing: -0.01em; white-space: nowrap; }
   .brand b { font-weight: 800; }
-  .brand-ic { font-size: 1.2rem; }
+  .brand-ic { font-size: 1.2rem; color: var(--accent); }
   .appbar-actions { display: flex; align-items: center; gap: 10px; }
   .net-pill { display: flex; align-items: center; gap: 7px; font-size: 0.78rem; font-weight: 600; color: var(--muted); background: var(--panel-2); border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; }
   @media (max-width: 600px) { .net-pill { display: none; } }
@@ -118,7 +123,8 @@
   .hero .search { max-width: 560px; margin: 0 auto 10px; }
   .hero .hint { max-width: 560px; margin: 0 auto 18px; text-align: center; }
   .hero-feats { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
-  .feat { font-size: 0.78rem; color: var(--muted); background: var(--panel); border: 1px solid var(--border); border-radius: 999px; padding: 6px 13px; backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); }
+  .feat { display: inline-flex; align-items: center; gap: 6px; font-size: 0.78rem; color: var(--muted); background: var(--panel); border: 1px solid var(--border); border-radius: 999px; padding: 6px 13px; backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); }
+  .feat .ico { color: var(--accent); }
   body.searched .hero { padding: 20px 0 4px; }
   body.searched .hero-lead, body.searched .hero-feats { display: none; }
   @media (max-width: 560px) { .hero h1 { font-size: 1.6rem; } }
@@ -320,7 +326,7 @@
   .factory-bar a { color: var(--accent); text-decoration: none; font-family: ui-monospace, Menlo, monospace; }
   .factory-bar .act-btn { flex: none; min-width: 0; padding: 8px 14px; font-size: 0.82rem; }
   .act-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
-  .act-btn { flex: 1; min-width: 130px; background: var(--panel-2); border: 1px solid var(--border); color: var(--text); border-radius: 10px; padding: 12px; font-weight: 600; font-size: 0.88rem; cursor: pointer; transition: transform .15s ease, border-color .2s ease, box-shadow .2s ease; }
+  .act-btn { display: flex; align-items: center; justify-content: center; gap: 8px; flex: 1; min-width: 130px; background: var(--panel-2); border: 1px solid var(--border); color: var(--text); border-radius: 10px; padding: 12px; font-weight: 600; font-size: 0.88rem; cursor: pointer; transition: transform .15s ease, border-color .2s ease, box-shadow .2s ease; }
   .act-btn:hover:not(:disabled) { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 8px 22px rgba(79,157,255,0.18); }
   .act-btn:active:not(:disabled) { transform: translateY(0); }
   .act-btn:disabled { opacity: 0.55; cursor: not-allowed; }
@@ -368,7 +374,8 @@
   /* leaderboard */
   .lb { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; margin-top: 22px; }
   .lb-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
-  .lb-head h2 { font-size: 1.05rem; margin: 0; }
+  .lb-head h2 { display: flex; align-items: center; gap: 8px; font-size: 1.05rem; margin: 0; }
+  .lb-head h2 .ico { color: var(--amber); }
   .lb-head button { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 6px 11px; cursor: pointer; font-size: 0.9rem; }
   .lb-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border); }
   .lb-row:first-child { border-top: none; }
@@ -406,13 +413,13 @@
 
 <div class="appbar">
   <div class="appbar-inner">
-    <a class="brand" href="./"><span class="brand-ic">🩺</span> Arc <b>Wallet&nbsp;Health</b></a>
+    <a class="brand" href="./"><span class="brand-ic ico" data-icon="activity"></span> Arc <b>Wallet&nbsp;Health</b></a>
     <div class="appbar-actions">
       <div class="net-pill"><span class="dot" id="netDot2"></span> Arc Testnet</div>
       <button class="theme-btn" id="themeBtn" title="Toggle theme">🌙</button>
       <div class="wallet-area">
         <button class="wallet-btn" id="walletBtn">
-          <span id="walletBtnIcon">🔗</span><span id="walletBtnText">Connect Wallet</span>
+          <span id="walletBtnIcon" class="ico" data-icon="wallet"></span><span id="walletBtnText">Connect Wallet</span>
         </button>
         <div class="wallet-menu" id="walletMenu"></div>
       </div>
@@ -432,10 +439,10 @@
     </div>
     <p class="hint">Paste an EVM address or <b>Connect Wallet</b>. No wallet? <a href="#" id="tryExample">Try an example ↗</a> · Need gas? <a href="https://faucet.circle.com" target="_blank" rel="noopener">faucet.circle.com</a></p>
     <div class="hero-feats">
-      <span class="feat">◍ Health score</span>
-      <span class="feat">◇ Tokens &amp; NFTs</span>
-      <span class="feat">▤ Transaction quality</span>
-      <span class="feat">🏅 Achievements</span>
+      <span class="feat"><span class="ico" data-icon="activity"></span>Health score</span>
+      <span class="feat"><span class="ico" data-icon="gem"></span>Tokens &amp; NFTs</span>
+      <span class="feat"><span class="ico" data-icon="barChart"></span>Transaction quality</span>
+      <span class="feat"><span class="ico" data-icon="award"></span>Achievements</span>
     </div>
   </section>
 
@@ -471,7 +478,7 @@
     </div>
 
     <div class="section dx" style="--acc:#4f9dff">
-      <div class="clabel">🩺 Diagnosis &amp; Vitals</div>
+      <div class="clabel"><span class="ico" data-icon="activity"></span>Diagnosis &amp; Vitals</div>
       <div class="dx-grid">
         <div class="vitals" id="vitals"></div>
         <div class="dx-side">
@@ -512,18 +519,18 @@
     </div>
 
     <div class="section" style="--acc:#f1c40f">
-      <div class="clabel">NFT Gallery (<span id="nftGalCount">0</span>)</div>
+      <div class="clabel"><span class="ico" data-icon="image"></span>NFT Gallery (<span id="nftGalCount">0</span>)</div>
       <div class="nft-grid" id="nftGrid"></div>
       <div class="nft-more" id="nftMoreWrap"></div>
     </div>
 
     <div class="card full" style="margin-top:16px; margin-bottom:14px; --acc:#b07cff">
-      <div class="clabel">On-chain Actions <span class="act-note">(runs from the connected wallet)</span></div>
+      <div class="clabel"><span class="ico" data-icon="zap"></span>On-chain Actions <span class="act-note">(runs from the connected wallet)</span></div>
       <div id="factoryBar" class="factory-bar"></div>
       <div class="act-grid">
-        <button class="act-btn" id="actToken" type="button">🪙 Deploy Token</button>
-        <button class="act-btn" id="actNft" type="button">🖼️ Mint NFT</button>
-        <button class="act-btn" id="actTx" type="button">⚡ Test Transaction</button>
+        <button class="act-btn" id="actToken" type="button"><span class="ico" data-icon="coins"></span>Deploy Token</button>
+        <button class="act-btn" id="actNft" type="button"><span class="ico" data-icon="image"></span>Mint NFT</button>
+        <button class="act-btn" id="actTx" type="button"><span class="ico" data-icon="zap"></span>Test Transaction</button>
       </div>
       <div class="act-form" id="formToken">
         <div class="af-row">
@@ -550,24 +557,24 @@
     </div>
 
     <div class="section" style="--acc:#22d3ee">
-      <div class="clabel">📊 Transaction Quality</div>
+      <div class="clabel"><span class="ico" data-icon="barChart"></span>Transaction Quality</div>
       <div class="qgrid" id="qGrid"></div>
     </div>
 
     <div class="section" style="--acc:#f1c40f">
-      <div class="clabel">🏅 Achievements (<span id="badgeCount">0</span>/<span id="badgeTotal">0</span>)</div>
+      <div class="clabel"><span class="ico" data-icon="award"></span>Achievements (<span id="badgeCount">0</span>/<span id="badgeTotal">0</span>)</div>
       <div class="badges" id="badges"></div>
     </div>
 
     <div class="section" style="--acc:#2ecc71">
-      <div class="clabel">Recent Transactions</div>
+      <div class="clabel"><span class="ico" data-icon="arrows"></span>Recent Transactions</div>
       <div id="txList"></div>
       <div class="tx-more" id="txMoreWrap"></div>
     </div>
   </div>
 
   <div class="lb" id="lbPanel">
-    <div class="lb-head"><h2>🏆 Top 10 USDC Holders</h2><button id="lbRefresh" title="Reload">↻</button></div>
+    <div class="lb-head"><h2><span class="ico" data-icon="trophy"></span>Top 10 USDC Holders</h2><button id="lbRefresh" title="Reload">↻</button></div>
     <div id="lbBody"><div class="empty-note">Loading…</div></div>
   </div>
 
@@ -594,17 +601,37 @@
   const $ = (id) => document.getElementById(id);
   const short = (a) => a.slice(0, 6) + "…" + a.slice(-4);
 
+  // ================= ICONS (Lucide-style line icons) =================
+  const ICONS = {
+    activity: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+    barChart: '<path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>',
+    award: '<circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>',
+    trophy: '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>',
+    image: '<rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
+    arrows: '<path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="m21 8-4-4-4 4"/><path d="M17 4v16"/>',
+    coins: '<circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/>',
+    zap: '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
+    factory: '<path d="M2 20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8l-7 5V8l-7 5V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M17 18h1"/><path d="M12 18h1"/><path d="M7 18h1"/>',
+    wallet: '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',
+    gem: '<path d="M6 3h12l4 6-10 13L2 9Z"/><path d="M11 3 8 9l4 13 4-13-3-6"/><path d="M2 9h20"/>',
+    moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
+  };
+  const svgIco = (name) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[name] || ""}</svg>`;
+  function renderIcons(root) { (root || document).querySelectorAll("[data-icon]").forEach((el) => { el.innerHTML = svgIco(el.dataset.icon); }); }
+
   // ================= THEME =================
+  function setThemeIcon(t) { const b = $("themeBtn"); if (b) b.innerHTML = svgIco(t === "light" ? "sun" : "moon"); }
   (function initTheme() {
     const saved = localStorage.getItem("arc-theme") || "dark";
     document.documentElement.setAttribute("data-theme", saved);
-    if ($("themeBtn")) $("themeBtn").textContent = saved === "light" ? "☀️" : "🌙";
+    setThemeIcon(saved);
   })();
   $("themeBtn").addEventListener("click", () => {
     const cur = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
     document.documentElement.setAttribute("data-theme", cur);
     localStorage.setItem("arc-theme", cur);
-    $("themeBtn").textContent = cur === "light" ? "☀️" : "🌙";
+    setThemeIcon(cur);
   });
 
   // ================= NETWORK STATUS + GAS SPARKLINE =================
@@ -1134,7 +1161,7 @@
     if (FACTORY_ADDRESS) {
       bar.innerHTML = "";
     } else {
-      bar.innerHTML = `<button class="act-btn" id="actFactory" type="button">🏭 Deploy Factory (one-time)</button><span>No factory set yet — token/NFT deploy directly.</span>`;
+      bar.innerHTML = `<button class="act-btn" id="actFactory" type="button"><span class="ico">${svgIco("factory")}</span>Deploy Factory (one-time)</button><span>No factory set yet — token/NFT deploy directly.</span>`;
       $("actFactory").addEventListener("click", deployFactory);
     }
   }
@@ -1368,7 +1395,7 @@
   function updateWalletBtn() {
     const btn = $("walletBtn");
     if (account) { btn.classList.add("connected"); $("walletBtnIcon").outerHTML = '<span class="avatar" id="walletBtnIcon"></span>'; $("walletBtnText").textContent = short(account); }
-    else { btn.classList.remove("connected"); const ic = $("walletBtnIcon"); if (ic) ic.outerHTML = '<span id="walletBtnIcon">🔗</span>'; $("walletBtnText").textContent = "Connect Wallet"; }
+    else { btn.classList.remove("connected"); const ic = $("walletBtnIcon"); if (ic) ic.outerHTML = '<span id="walletBtnIcon" class="ico">' + svgIco("wallet") + '</span>'; $("walletBtnText").textContent = "Connect Wallet"; }
   }
 
   // ================= UTIL =================
@@ -1406,6 +1433,7 @@
   $("tkCancel").addEventListener("click", () => $("formToken").classList.remove("show"));
   $("nfCancel").addEventListener("click", () => $("formNft").classList.remove("show"));
 
+  renderIcons();
   renderFactoryBar();
   refreshNetwork();
   setInterval(refreshNetwork, 12000);
