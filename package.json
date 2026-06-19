@@ -1,0 +1,16 @@
+{
+  "name": "arc-wallet-checker",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ethers": "^6.13.4",
+    "solc": "^0.8.26"
+  }
+}
