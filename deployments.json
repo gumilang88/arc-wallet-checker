@@ -2,9 +2,9 @@
   "network": "Arc Testnet",
   "chainId": 5042002,
   "explorer": "https://testnet.arcscan.app",
-  "deployer": "",
+  "deployer": "0x5C3739eD0e6e77FaD6A83A3a603d0Ec9b0AeE713",
   "contracts": {
-    "ArcFactory": "",
+    "ArcFactory": "0xc4C6E31E8F18818e29C1F1FCBEE3dA9928DD5A9e",
     "sampleToken": "",
     "sampleNFT": ""
   }

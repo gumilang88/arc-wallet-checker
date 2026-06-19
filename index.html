@@ -429,7 +429,7 @@
   };
   // Persistent ArcFactory deployed once on Arc testnet. When set, token/NFT creation is
   // routed through it; empty string falls back to direct per-deploy ContractFactory.
-  const FACTORY_ADDRESS = "";
+  const FACTORY_ADDRESS = "0xc4C6E31E8F18818e29C1F1FCBEE3dA9928DD5A9e";
   const provider = new ethers.JsonRpcProvider(NET.rpc, undefined, { staticNetwork: true });
   const $ = (id) => document.getElementById(id);
   const short = (a) => a.slice(0, 6) + "…" + a.slice(-4);

@@ -32,13 +32,13 @@ count-up number animations, dark/light themes, fully responsive.
 
 | Role | Address | Explorer |
 |------|---------|----------|
-| Deployer | `TBD` | [Arcscan](https://testnet.arcscan.app/) |
-| **ArcFactory** | `TBD` | [Arcscan](https://testnet.arcscan.app/) |
-| Sample Token (via factory) | `TBD` | [Arcscan](https://testnet.arcscan.app/) |
-| Sample NFT (via factory) | `TBD` | [Arcscan](https://testnet.arcscan.app/) |
+| Deployer | `0x5C3739eD0e6e77FaD6A83A3a603d0Ec9b0AeE713` | [Arcscan](https://testnet.arcscan.app/address/0x5C3739eD0e6e77FaD6A83A3a603d0Ec9b0AeE713) |
+| **ArcFactory** | `0xc4C6E31E8F18818e29C1F1FCBEE3dA9928DD5A9e` | [Arcscan](https://testnet.arcscan.app/address/0xc4C6E31E8F18818e29C1F1FCBEE3dA9928DD5A9e) |
+| Sample Token (via factory) | `TBD` | — |
+| Sample NFT (via factory) | `TBD` | — |
 
-> Addresses are also recorded in [`deployments.json`](./deployments.json). Replace `TBD` once
-> the factory is deployed (see below).
+> Addresses are also recorded in [`deployments.json`](./deployments.json). The sample token / NFT
+> rows fill in once you create them through the factory in the app.
 
 ### ArcFactory
 
