@@ -729,7 +729,7 @@
   function renderFactoryBar() {
     const bar = $("factoryBar"); if (!bar) return;
     if (FACTORY_ADDRESS) {
-      bar.innerHTML = `🏭 Routed via <b>ArcFactory</b> <a href="${NET.explorer}/address/${FACTORY_ADDRESS}" target="_blank" rel="noopener">${short(FACTORY_ADDRESS)} ↗</a>`;
+      bar.innerHTML = "";
     } else {
       bar.innerHTML = `<button class="act-btn" id="actFactory" type="button">🏭 Deploy Factory (one-time)</button><span>No factory set yet — token/NFT deploy directly.</span>`;
       $("actFactory").addEventListener("click", deployFactory);
