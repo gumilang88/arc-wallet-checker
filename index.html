@@ -87,14 +87,6 @@
   .tok-card { overflow: visible; z-index: 25; }
   .tok-card::after { content: none; }
 
-  /* finishing accent: soft gradient top-line on every card/section */
-  .section, .lb { position: relative; }
-  .card::before, .section::before, .lb::before {
-    content: ""; position: absolute; top: 0; left: 16px; right: 16px; height: 2px; border-radius: 0 0 3px 3px;
-    background: linear-gradient(90deg, transparent, var(--acc, var(--accent)) 50%, transparent);
-    opacity: 0.5; pointer-events: none; transition: opacity .25s ease;
-  }
-  .card:hover::before, .section:hover::before, .lb:hover::before { opacity: 1; }
   .wrap { max-width: 980px; margin: 0 auto; }
   header { text-align: center; margin-bottom: 24px; }
   header h1 { font-size: 1.7rem; margin: 0 0 6px; background: linear-gradient(100deg, var(--accent), var(--purple) 60%, #6be3b8); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -0.02em; }
@@ -219,7 +211,7 @@
   .notes li a { color: var(--accent); text-decoration: none; }
   .vital .vfill { filter: saturate(1.1); }
   /* address as a slim header card */
-  .addr-card .cval { font-size: 1.05rem; }
+  .addr-card .cval { font-size: 0.92rem; }
   .addr-card .clabel { margin-bottom: 6px; }
 
   .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; position: relative; z-index: 3; margin-top: 16px; }
