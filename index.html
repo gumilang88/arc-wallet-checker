@@ -246,6 +246,10 @@
   .nft-ph { width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #04121f; background: linear-gradient(135deg,var(--accent),var(--purple)); }
   .nft-cap { padding: 6px 8px; font-size: 0.72rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .nft-cap small { color: var(--muted); }
+  .nft-more { display: flex; justify-content: center; margin-top: 12px; }
+  .nft-more:empty { margin-top: 0; }
+  .more-btn { background: var(--panel-2); border: 1px solid var(--border); color: var(--text); border-radius: 999px; padding: 8px 18px; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: border-color .2s ease, transform .15s ease; }
+  .more-btn:hover { border-color: var(--accent); transform: translateY(-1px); }
 
   .tx-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border); }
   .tx-row:first-of-type { border-top: none; }
@@ -436,10 +440,10 @@
         <div class="csub" id="rBalSub"></div>
       </div>
       <div class="card" style="--acc:#b07cff">
-        <div class="cicon">🔁</div>
-        <div class="clabel">Transactions (nonce)</div>
-        <div class="cval" id="rNonce">—</div>
-        <div class="csub">Total tx sent</div>
+        <div class="cicon">🪙</div>
+        <div class="clabel">Tokens Held</div>
+        <div class="cval" id="rTokensHeld">—</div>
+        <div class="csub" id="rTokensHeldSub">ERC-20</div>
       </div>
       <div class="card" style="--acc:#f1c40f">
         <div class="cicon">🖼️</div>
@@ -462,6 +466,7 @@
     <div class="section" style="--acc:#f1c40f">
       <div class="clabel">NFT Gallery (<span id="nftGalCount">0</span>)</div>
       <div class="nft-grid" id="nftGrid"></div>
+      <div class="nft-more" id="nftMoreWrap"></div>
     </div>
 
     <div class="section" style="--acc:#22d3ee">
@@ -575,7 +580,6 @@
       $("rExplorer").href = NET.explorer + "/address/" + addr;
       countUp($("rBal"), balanceNum, formatNum);
       $("rBalSub").textContent = balanceWei.toString() + " base units";
-      countUp($("rNonce"), nonce);
       renderNfts(assets.nfts);
       renderTokens(assets.erc20);
       renderGallery(gallery);
@@ -593,7 +597,8 @@
   }
 
   function showSkeletons() {
-    $("nftGrid").innerHTML = Array.from({ length: 6 }, () => '<div class="skeleton sk-tile"></div>').join("");
+    $("nftGrid").innerHTML = Array.from({ length: 5 }, () => '<div class="skeleton sk-tile"></div>').join("");
+    $("nftMoreWrap").innerHTML = "";
     $("txList").innerHTML = Array.from({ length: 5 }, () => '<div class="skeleton sk-line"></div>').join("");
     $("rTokens").innerHTML = "";
     $("tokBtnLabel").textContent = "…";
@@ -657,7 +662,7 @@
       const res = await fetch(`${NET.explorerApi}/addresses/${addr}/nft?type=ERC-721%2CERC-1155`);
       if (!res.ok) throw new Error("explorer " + res.status);
       const data = await res.json();
-      return (data.items || []).slice(0, 12);
+      return (data.items || []).slice(0, 50);
     } catch { return []; }
   }
 
@@ -672,20 +677,32 @@
     if (!u) return null;
     return u.startsWith("ipfs://") ? "https://dweb.link/ipfs/" + u.slice(7) : u;
   }
+  const NFT_PREVIEW = 5;
+  let galleryItems = [], galleryExpanded = false;
+  function nftTile(it) {
+    const t = it.token || {};
+    const img = ipfsToHttp(it.image_url || it.media_url || (it.metadata && it.metadata.image));
+    const title = (it.metadata && it.metadata.name) || `${t.symbol || "NFT"} #${it.id}`;
+    const link = `${NET.explorer}/token/${t.address_hash}/instance/${it.id}`;
+    const visual = img
+      ? `<img class="nft-img" src="${escapeHtml(img)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'nft-ph',textContent:'#${escapeHtml(String(it.id))}'}))">`
+      : `<div class="nft-ph">#${escapeHtml(String(it.id))}</div>`;
+    return `<a class="nft-tile" href="${link}" target="_blank" rel="noopener">${visual}<div class="nft-cap">${escapeHtml(title)}<br><small>${escapeHtml(t.symbol || "")}</small></div></a>`;
+  }
   function renderGallery(items) {
-    const box = $("nftGrid");
+    galleryItems = items; galleryExpanded = false;
     $("nftGalCount").textContent = items.length;
-    if (!items.length) { box.innerHTML = '<div class="empty-note">No NFTs held.</div>'; return; }
-    box.innerHTML = items.map((it) => {
-      const t = it.token || {};
-      const img = ipfsToHttp(it.image_url || it.media_url || (it.metadata && it.metadata.image));
-      const title = (it.metadata && it.metadata.name) || `${t.symbol || "NFT"} #${it.id}`;
-      const link = `${NET.explorer}/token/${t.address_hash}/instance/${it.id}`;
-      const visual = img
-        ? `<img class="nft-img" src="${escapeHtml(img)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'nft-ph',textContent:'#${escapeHtml(String(it.id))}'}))">`
-        : `<div class="nft-ph">#${escapeHtml(String(it.id))}</div>`;
-      return `<a class="nft-tile" href="${link}" target="_blank" rel="noopener">${visual}<div class="nft-cap">${escapeHtml(title)}<br><small>${escapeHtml(t.symbol || "")}</small></div></a>`;
-    }).join("");
+    drawGallery();
+  }
+  function drawGallery() {
+    const box = $("nftGrid"), wrap = $("nftMoreWrap");
+    if (!galleryItems.length) { box.innerHTML = '<div class="empty-note">No NFTs held.</div>'; wrap.innerHTML = ""; return; }
+    const shown = galleryExpanded ? galleryItems : galleryItems.slice(0, NFT_PREVIEW);
+    box.innerHTML = shown.map(nftTile).join("");
+    if (galleryItems.length > NFT_PREVIEW) {
+      wrap.innerHTML = `<button class="more-btn" id="nftMore" type="button">${galleryExpanded ? "Show less ▲" : `Show all ${galleryItems.length} ▼`}</button>`;
+      $("nftMore").addEventListener("click", () => { galleryExpanded = !galleryExpanded; drawGallery(); });
+    } else wrap.innerHTML = "";
   }
 
   function timeAgo(iso) {
@@ -724,6 +741,8 @@
   function renderTokens(tokens) {
     heldTokens = tokens;
     const total = tokens.reduce((s, t) => s + (t.rate ? t.amount * t.rate : 0), 0);
+    countUp($("rTokensHeld"), tokens.length);
+    $("rTokensHeldSub").textContent = total > 0 ? "$" + formatNum(total) + " total" : "ERC-20";
     $("tokBtnLabel").textContent = (total > 0 ? "$" + formatNum(total) + " · " : "") + tokens.length + " Token" + (tokens.length === 1 ? "" : "s");
     $("tokBtn").disabled = !tokens.length;
     $("tokDd").classList.remove("open");
@@ -817,9 +836,9 @@
     const badge = $("badge");
     badge.className = "badge " + (score >= 75 ? "active" : score >= 40 ? "new" : "empty");
     badge.textContent = label;
-    $("verdictText").textContent = score >= 75 ? "Wallet sehat — aktivitas & aset solid."
-      : score >= 40 ? "Kondisi sedang — masih bisa ditingkatkan."
-      : score > 0 ? "Aktivitas / aset masih minim." : "Belum ada aktivitas.";
+    $("verdictText").textContent = score >= 75 ? "Healthy wallet — solid activity & assets."
+      : score >= 40 ? "Moderate — room to improve."
+      : score > 0 ? "Low activity / assets." : "No activity yet.";
     $("hFactors").innerHTML = [
       { l: "Balance", on: balance > 0 }, { l: "Tx " + txTotal, on: txTotal > 0 },
       { l: "Tokens " + tokens, on: tokens > 0 }, { l: "NFTs " + nft, on: nft > 0 },
@@ -830,22 +849,20 @@
     ).join("");
     requestAnimationFrame(() => $("vitals").querySelectorAll(".vfill").forEach((el, i) => { el.style.width = vitals[i].v + "%"; }));
 
-    const ageStr = txTotal === 0 ? "—" : ageDays >= 1 ? Math.round(ageDays) + "d" : "<1d";
     const idleStr = idleDays === Infinity ? "—" : idleDays < 1 ? timeAgo(new Date(st.lastMs).toISOString()) : Math.round(idleDays) + "d ago";
     $("dxMeta").innerHTML =
       `<span class="dx-chip">Last active <b>${idleStr}</b></span>` +
       `<span class="dx-chip">Tx <b>${txTotal.toLocaleString("en-US")}</b></span>`;
 
     const notes = [];
-    if (info.is_scam) notes.push("🚨 Address ditandai <b>SCAM</b> oleh explorer — hati-hati.");
-    if (txTotal === 0) notes.push("🌱 Belum ada transaksi — coba <b>Test Transaction</b> untuk memulai.");
-    if (balance === 0) notes.push("💧 Saldo gas 0 USDC — isi via <a href='https://faucet.circle.com' target='_blank' rel='noopener'>faucet.circle.com</a>.");
-    if (st.failed > 0) notes.push(`⚠️ <b>${st.failed}</b> dari ${st.n} tx terakhir gagal — periksa gas/nonce.`);
-    if (tokens === 0) notes.push("🪙 Belum memegang token ERC-20 — pertimbangkan diversifikasi.");
-    if (nft === 0) notes.push("🖼️ Belum memegang NFT.");
-    if (txTotal > 0 && ageDays < 7) notes.push(`👶 Wallet baru (${ageStr}).`);
-    if (idleDays !== Infinity && idleDays > 30) notes.push(`💤 Tidak aktif ${Math.round(idleDays)} hari.`);
-    if (!notes.length) notes.push("✅ Sehat! Aktivitas, saldo, & aset solid. Pertahankan.");
+    if (info.is_scam) notes.push("🚨 Address flagged as <b>SCAM</b> by the explorer — be careful.");
+    if (txTotal === 0) notes.push("🌱 No transactions yet — try <b>Test Transaction</b> to get started.");
+    if (balance === 0) notes.push("💧 0 USDC for gas — top up at <a href='https://faucet.circle.com' target='_blank' rel='noopener'>faucet.circle.com</a>.");
+    if (st.failed > 0) notes.push(`⚠️ <b>${st.failed}</b> of the last ${st.n} txs failed — check gas/nonce.`);
+    if (tokens === 0) notes.push("🪙 No ERC-20 tokens held — consider diversifying.");
+    if (nft === 0) notes.push("🖼️ No NFTs held.");
+    if (idleDays !== Infinity && idleDays > 30) notes.push(`💤 Inactive for ${Math.round(idleDays)} days.`);
+    if (!notes.length) notes.push("✅ Healthy! Activity, balance, and assets look solid. Keep it up.");
     $("dxNotes").innerHTML = notes.slice(0, 4).map((n) => `<li>${n}</li>`).join("");
 
     const scamTokens = assets.erc20.filter((t) => t.isScam).length;
