@@ -38,6 +38,7 @@
     --glass-shadow: 0 8px 28px rgba(40, 70, 120, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.6);
   }
   * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
   body {
     margin: 0;
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -130,8 +131,15 @@
   .error { background: rgba(231,76,60,0.12); border: 1px solid rgba(231,76,60,0.4); color: #ff9d92; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-size: 0.88rem; }
 
   #result { display: none; }
-  #result.show { display: block; animation: riseIn .5s cubic-bezier(.2,.7,.2,1) both; }
+  #result.show { display: block; }
+  #result.show > * { animation: riseIn .55s cubic-bezier(.2,.7,.2,1) both; }
+  #result.show > *:nth-child(2) { animation-delay: .06s; }
+  #result.show > *:nth-child(3) { animation-delay: .12s; }
+  #result.show > *:nth-child(4) { animation-delay: .18s; }
+  #result.show > *:nth-child(5) { animation-delay: .24s; }
+  #result.show > *:nth-child(6) { animation-delay: .30s; }
   @keyframes riseIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } #result.show > * { animation: none; } }
 
   /* health + donut gauge */
   .health { display: flex; align-items: center; gap: 20px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 14px; }
@@ -154,7 +162,10 @@
   .factor.on .fi { color: var(--green); }
   .factor.off { opacity: 0.5; }
 
-  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  /* smooth hover highlight on list rows */
+  .tx-row, .lb-row, .tok-row { transition: background .2s ease, padding-left .2s ease; border-radius: 8px; }
+  .tx-row:hover, .lb-row:hover, .tok-row:hover { background: var(--panel-2); padding-left: 8px; }
   .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
   .card.full { grid-column: 1 / -1; }
   .card .clabel, .section .clabel { color: var(--muted); font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px; }
