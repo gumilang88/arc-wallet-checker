@@ -213,6 +213,9 @@
 
   /* on-chain actions */
   .act-note { color: var(--muted); font-size: 0.72rem; text-transform: none; letter-spacing: 0; }
+  .factory-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 0.78rem; color: var(--muted); margin: 2px 0 12px; }
+  .factory-bar a { color: var(--accent); text-decoration: none; font-family: ui-monospace, Menlo, monospace; }
+  .factory-bar .act-btn { flex: none; min-width: 0; padding: 8px 14px; font-size: 0.82rem; }
   .act-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
   .act-btn { flex: 1; min-width: 130px; background: var(--panel-2); border: 1px solid var(--border); color: var(--text); border-radius: 10px; padding: 12px; font-weight: 600; font-size: 0.88rem; cursor: pointer; transition: transform .15s ease, border-color .2s ease, box-shadow .2s ease; }
   .act-btn:hover:not(:disabled) { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 8px 22px rgba(79,157,255,0.18); }
@@ -326,6 +329,7 @@
 
     <div class="card full" style="margin-bottom:14px; --acc:#b07cff">
       <div class="clabel">On-chain Actions <span class="act-note">(runs from the connected wallet)</span></div>
+      <div id="factoryBar" class="factory-bar"></div>
       <div class="act-grid">
         <button class="act-btn" id="actToken" type="button">🪙 Deploy Token</button>
         <button class="act-btn" id="actNft" type="button">🖼️ Mint NFT</button>
@@ -421,6 +425,9 @@
     explorerApi: "https://testnet.arcscan.app/api/v2",
     symbol: "USDC", decimals: 18,
   };
+  // Persistent ArcFactory deployed once on Arc testnet. When set, token/NFT creation is
+  // routed through it; empty string falls back to direct per-deploy ContractFactory.
+  const FACTORY_ADDRESS = "";
   const provider = new ethers.JsonRpcProvider(NET.rpc, undefined, { staticNetwork: true });
   const $ = (id) => document.getElementById(id);
   const short = (a) => a.slice(0, 6) + "…" + a.slice(-4);
@@ -700,7 +707,38 @@
   const addrLink = (a) => `<a href="${NET.explorer}/address/${a}" target="_blank" rel="noopener">${short(a)}</a>`;
   const errMsg = (e) => e.shortMessage || e.info?.error?.message || e.reason || e.message || String(e);
   function actStatus(html, type) { const el = $("actStatus"); el.className = "act-status " + (type || ""); el.innerHTML = html; if (type === "ok") celebrate(); }
-  function actBusy(on) { ["actToken", "actNft", "actTx", "tkSubmit", "nfSubmit"].forEach((id) => ($(id).disabled = on)); }
+  function actBusy(on) { ["actToken", "actNft", "actTx", "tkSubmit", "nfSubmit", "actFactory"].forEach((id) => { const el = $(id); if (el) el.disabled = on; }); }
+  // Pull a created-contract address out of a factory tx receipt's event logs.
+  function eventAddress(contract, rcpt, eventName, field) {
+    for (const log of rcpt.logs) {
+      try { const p = contract.interface.parseLog(log); if (p && p.name === eventName) return p.args[field]; } catch {}
+    }
+    return null;
+  }
+  function renderFactoryBar() {
+    const bar = $("factoryBar"); if (!bar) return;
+    if (FACTORY_ADDRESS) {
+      bar.innerHTML = `🏭 Routed via <b>ArcFactory</b> <a href="${NET.explorer}/address/${FACTORY_ADDRESS}" target="_blank" rel="noopener">${short(FACTORY_ADDRESS)} ↗</a>`;
+    } else {
+      bar.innerHTML = `<button class="act-btn" id="actFactory" type="button">🏭 Deploy Factory (one-time)</button><span>No factory set yet — token/NFT deploy directly.</span>`;
+      $("actFactory").addEventListener("click", deployFactory);
+    }
+  }
+  async function deployFactory() {
+    const signer = await getSigner(); if (!signer) return;
+    actBusy(true);
+    try {
+      const f = new ethers.ContractFactory(ARC_CONTRACTS.factory.abi, ARC_CONTRACTS.factory.bytecode, signer);
+      actStatus("Deploying ArcFactory… confirm in your wallet.");
+      const c = await f.deploy();
+      const tx = c.deploymentTransaction();
+      actStatus(`Deploy sent ${txLink(tx.hash)} — waiting for confirmation…`);
+      await c.waitForDeployment();
+      const addr = await c.getAddress();
+      actStatus(`✅ ArcFactory deployed at ${addrLink(addr)} · ${txLink(tx.hash, "view tx")}<br><b>Copy this address</b> and set it as <code>FACTORY_ADDRESS</code> in index.html, then redeploy.`, "ok");
+    } catch (e) { actStatus("❌ Factory deploy failed: " + escapeHtml(errMsg(e)), "err"); }
+    finally { actBusy(false); }
+  }
   const ownViewing = () => account && $("rAddr").textContent.toLowerCase() === account.toLowerCase();
 
   function toggleForm(which) {
@@ -725,15 +763,25 @@
     if (supply <= 0n) return actStatus("Total supply must be greater than 0.", "err");
     actBusy(true);
     try {
-      const f = new ethers.ContractFactory(ARC_CONTRACTS.token.abi, ARC_CONTRACTS.token.bytecode, signer);
-      actStatus("Sending deploy transaction… confirm in your wallet.");
-      const c = await f.deploy(name, symbol, supply);
-      const tx = c.deploymentTransaction();
-      actStatus(`Deploy sent ${txLink(tx.hash)} — waiting for confirmation…`);
-      await c.waitForDeployment();
-      const addr = await c.getAddress();
+      let addr, tx;
+      if (FACTORY_ADDRESS) {
+        const factory = new ethers.Contract(FACTORY_ADDRESS, ARC_CONTRACTS.factory.abi, signer);
+        actStatus("Creating token via ArcFactory… confirm in your wallet.");
+        tx = await factory.createToken(name, symbol, supply);
+        actStatus(`Sent ${txLink(tx.hash)} — waiting for confirmation…`);
+        const rcpt = await tx.wait();
+        addr = eventAddress(factory, rcpt, "TokenCreated", "token");
+      } else {
+        const f = new ethers.ContractFactory(ARC_CONTRACTS.token.abi, ARC_CONTRACTS.token.bytecode, signer);
+        actStatus("Sending deploy transaction… confirm in your wallet.");
+        const c = await f.deploy(name, symbol, supply, account);
+        tx = c.deploymentTransaction();
+        actStatus(`Deploy sent ${txLink(tx.hash)} — waiting for confirmation…`);
+        await c.waitForDeployment();
+        addr = await c.getAddress();
+      }
       $("formToken").classList.remove("show");
-      actStatus(`✅ Token <b>${escapeHtml(symbol)}</b> deployed at ${addrLink(addr)} · ${txLink(tx.hash, "view tx")}`, "ok");
+      actStatus(`✅ Token <b>${escapeHtml(symbol)}</b> deployed at ${addr ? addrLink(addr) : "—"} · ${txLink(tx.hash, "view tx")}`, "ok");
       if (ownViewing()) checkWallet();
     } catch (e) { actStatus("❌ Deploy failed: " + escapeHtml(errMsg(e)), "err"); }
     finally { actBusy(false); }
@@ -743,17 +791,28 @@
     const signer = await getSigner(); if (!signer) return;
     const name = $("nfName").value.trim() || "Arc Test NFT";
     const symbol = $("nfSym").value.trim() || "ANFT";
+    const uri = "https://testnet.arcscan.app";
     actBusy(true);
     try {
-      const f = new ethers.ContractFactory(ARC_CONTRACTS.nft.abi, ARC_CONTRACTS.nft.bytecode, signer);
-      actStatus("Sending mint transaction… confirm in your wallet.");
-      const c = await f.deploy(name, symbol, "https://testnet.arcscan.app");
-      const tx = c.deploymentTransaction();
-      actStatus(`Sent ${txLink(tx.hash)} — waiting for confirmation…`);
-      await c.waitForDeployment();
-      const addr = await c.getAddress();
+      let addr, tx;
+      if (FACTORY_ADDRESS) {
+        const factory = new ethers.Contract(FACTORY_ADDRESS, ARC_CONTRACTS.factory.abi, signer);
+        actStatus("Creating NFT collection via ArcFactory… confirm in your wallet.");
+        tx = await factory.createNFT(name, symbol, uri);
+        actStatus(`Sent ${txLink(tx.hash)} — waiting for confirmation…`);
+        const rcpt = await tx.wait();
+        addr = eventAddress(factory, rcpt, "NFTCreated", "collection");
+      } else {
+        const f = new ethers.ContractFactory(ARC_CONTRACTS.nft.abi, ARC_CONTRACTS.nft.bytecode, signer);
+        actStatus("Sending mint transaction… confirm in your wallet.");
+        const c = await f.deploy(name, symbol, uri, account);
+        tx = c.deploymentTransaction();
+        actStatus(`Sent ${txLink(tx.hash)} — waiting for confirmation…`);
+        await c.waitForDeployment();
+        addr = await c.getAddress();
+      }
       $("formNft").classList.remove("show");
-      actStatus(`✅ NFT #1 minted to your wallet. Collection ${addrLink(addr)} · ${txLink(tx.hash, "view tx")}`, "ok");
+      actStatus(`✅ NFT #1 minted to your wallet. Collection ${addr ? addrLink(addr) : "—"} · ${txLink(tx.hash, "view tx")}`, "ok");
       if (ownViewing()) checkWallet();
     } catch (e) { actStatus("❌ Mint failed: " + escapeHtml(errMsg(e)), "err"); }
     finally { actBusy(false); }
@@ -919,6 +978,7 @@
   $("tkCancel").addEventListener("click", () => $("formToken").classList.remove("show"));
   $("nfCancel").addEventListener("click", () => $("formNft").classList.remove("show"));
 
+  renderFactoryBar();
   refreshNetwork();
   setInterval(refreshNetwork, 12000);
   loadLeaderboard();
