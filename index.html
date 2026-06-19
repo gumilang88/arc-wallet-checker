@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Arc Testnet — Wallet Health Checker</title>
 <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
-<script src="contracts.js?v=3"></script>
+<script src="contracts.js?v=4"></script>
 <style>
   :root {
     --page-bg: radial-gradient(1200px 600px at 50% -10%, #101d30 0%, #070a10 60%);
@@ -412,7 +412,7 @@
   </div>
 
   <footer>
-    RPC: <code>rpc.testnet.arc.network</code> · Token/NFT data via <a href="https://testnet.arcscan.app" target="_blank" rel="noopener">Arcscan (Blockscout)</a><br />
+    RPC: <code>arc-testnet.drpc.org</code> · Token/NFT data via <a href="https://testnet.arcscan.app" target="_blank" rel="noopener">Arcscan (Blockscout)</a><br />
     Read-only — your private key is never requested. Connecting only reads your address & switches network.
   </footer>
 </div>
@@ -420,7 +420,9 @@
 <script>
   const NET = {
     name: "Arc Testnet", chainId: 5042002, chainIdHex: "0x4cef52",
-    rpc: "https://rpc.testnet.arc.network",
+    // dRPC first (the official rpc.testnet.arc.network rate-limits under load); official kept as fallback.
+    rpc: "https://arc-testnet.drpc.org",
+    rpcUrls: ["https://arc-testnet.drpc.org", "https://rpc.testnet.arc.network"],
     explorer: "https://testnet.arcscan.app",
     explorerApi: "https://testnet.arcscan.app/api/v2",
     symbol: "USDC", decimals: 18,
@@ -937,7 +939,7 @@
       await eip.request({ method: "wallet_switchEthereumChain", params: [{ chainId: NET.chainIdHex }] });
     } catch (e) {
       if (e.code === 4902 || /unrecognized|not been added/i.test(e.message || "")) {
-        await eip.request({ method: "wallet_addEthereumChain", params: [{ chainId: NET.chainIdHex, chainName: NET.name, rpcUrls: [NET.rpc], blockExplorerUrls: [NET.explorer], nativeCurrency: { name: NET.symbol, symbol: NET.symbol, decimals: NET.decimals } }] });
+        await eip.request({ method: "wallet_addEthereumChain", params: [{ chainId: NET.chainIdHex, chainName: NET.name, rpcUrls: NET.rpcUrls, blockExplorerUrls: [NET.explorer], nativeCurrency: { name: NET.symbol, symbol: NET.symbol, decimals: NET.decimals } }] });
       }
     }
   }
