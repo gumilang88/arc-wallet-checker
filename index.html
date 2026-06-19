@@ -162,6 +162,37 @@
   .factor.on .fi { color: var(--green); }
   .factor.off { opacity: 0.5; }
 
+  /* ---- doctor: diagnosis / vitals / notes / safety ---- */
+  .dx-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 22px; }
+  @media (max-width: 620px) { .dx-grid { grid-template-columns: 1fr; gap: 16px; } }
+  .vitals { display: flex; flex-direction: column; gap: 11px; }
+  .vital { display: grid; grid-template-columns: 96px 1fr 40px; align-items: center; gap: 10px; }
+  .vital .vn { font-size: 0.8rem; color: var(--muted); }
+  .vital .vbar { height: 8px; border-radius: 999px; background: var(--panel-2); overflow: hidden; }
+  .vital .vfill { height: 100%; border-radius: 999px; width: 0; transition: width .9s cubic-bezier(.2,.7,.2,1); }
+  .vital .vv { font-size: 0.82rem; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+  .dx-side { display: flex; flex-direction: column; gap: 8px; }
+  .dx-meta { display: flex; flex-wrap: wrap; gap: 8px; }
+  .dx-chip { font-size: 0.74rem; padding: 4px 10px; border-radius: 8px; background: var(--panel-2); border: 1px solid var(--border); color: var(--text); }
+  .dx-chip b { color: var(--accent); }
+  .notes-h { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin-top: 6px; }
+  .notes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  .notes li { font-size: 0.83rem; line-height: 1.35; padding-left: 2px; }
+  .safety { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+  .sf { font-size: 0.74rem; padding: 4px 10px; border-radius: 8px; display: flex; align-items: center; gap: 6px; border: 1px solid var(--border); }
+  .sf.ok { background: rgba(46,204,113,0.12); color: var(--green); border-color: rgba(46,204,113,0.3); }
+  .sf.warn { background: rgba(241,196,15,0.12); color: var(--amber); border-color: rgba(241,196,15,0.3); }
+  .sf.bad { background: rgba(231,76,60,0.14); color: #ff7a6b; border-color: rgba(231,76,60,0.4); }
+
+  /* ---- transaction quality tiles ---- */
+  .qgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
+  .qtile { background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .qtile .ql { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); margin-bottom: 6px; }
+  .qtile .qv { font-size: 1.15rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .qtile .qv small { font-size: 0.72rem; color: var(--muted); font-weight: 500; }
+  .qtile .qsub { font-size: 0.72rem; color: var(--muted); margin-top: 3px; }
+  .qv.pos { color: var(--green); } .qv.neg { color: #ff7a6b; }
+
   .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; position: relative; z-index: 3; }
   /* smooth hover highlight on list rows */
   .tx-row, .lb-row, .tok-row { transition: background .2s ease, padding-left .2s ease; border-radius: 8px; }
@@ -338,6 +369,19 @@
       </div>
     </div>
 
+    <div class="section dx" style="--acc:#4f9dff">
+      <div class="clabel">🩺 Diagnosis &amp; Vitals</div>
+      <div class="dx-grid">
+        <div class="vitals" id="vitals"></div>
+        <div class="dx-side">
+          <div class="dx-meta" id="dxMeta"></div>
+          <div class="notes-h">Doctor's notes</div>
+          <ul class="notes" id="dxNotes"></ul>
+          <div class="safety" id="dxSafety"></div>
+        </div>
+      </div>
+    </div>
+
     <div class="card full" style="margin-bottom:14px; --acc:#b07cff">
       <div class="clabel">On-chain Actions <span class="act-note">(runs from the connected wallet)</span></div>
       <div id="factoryBar" class="factory-bar"></div>
@@ -404,6 +448,11 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <div class="section" style="--acc:#22d3ee">
+      <div class="clabel">📊 Transaction Quality</div>
+      <div class="qgrid" id="qGrid"></div>
     </div>
 
     <div class="section" style="--acc:#f1c40f">
@@ -503,12 +552,14 @@
     $("lbPanel").style.display = "none";
 
     try {
-      const [balanceWei, nonce, assets, txs, gallery] = await Promise.all([
+      const [balanceWei, nonce, assets, txs, gallery, counters, info] = await Promise.all([
         provider.getBalance(addr),
         provider.getTransactionCount(addr),
         fetchAssets(addr),
         fetchTxs(addr),
         fetchNftGallery(addr),
+        fetchCounters(addr),
+        fetchAddressInfo(addr),
       ]);
       const balanceNum = Number(ethers.formatUnits(balanceWei, NET.decimals));
       $("rAddr").textContent = addr;
@@ -520,7 +571,9 @@
       renderTokens(assets.erc20);
       renderGallery(gallery);
       renderTxs(txs, addr);
-      renderHealth(balanceNum, nonce, assets);
+      const ctx = { addr, balance: balanceNum, nonce, assets, txs, counters, info };
+      renderDoctor(ctx);
+      renderTxQuality(ctx);
     } catch (e) {
       showError("Failed to fetch data: " + (e.shortMessage || e.message || e));
       $("result").classList.remove("show");
@@ -535,6 +588,9 @@
     $("txList").innerHTML = Array.from({ length: 5 }, () => '<div class="skeleton sk-line"></div>').join("");
     $("rTokens").innerHTML = "";
     $("tokBtnLabel").textContent = "…";
+    $("vitals").innerHTML = Array.from({ length: 5 }, () => '<div class="skeleton sk-line"></div>').join("");
+    $("qGrid").innerHTML = Array.from({ length: 8 }, () => '<div class="skeleton sk-tile" style="aspect-ratio:auto;height:64px"></div>').join("");
+    $("dxMeta").innerHTML = ""; $("dxNotes").innerHTML = ""; $("dxSafety").innerHTML = "";
   }
 
   // ---- assets (ERC-20 + NFT counts) ----
@@ -548,7 +604,7 @@
         const t = it.token || {};
         if (t.type === "ERC-20") {
           const dec = t.decimals ? Number(t.decimals) : 0;
-          erc20.push({ name: t.name || "Unknown", symbol: t.symbol || "?", address: t.address_hash, iconUrl: t.icon_url || null, rate: t.exchange_rate ? Number(t.exchange_rate) : null, amount: Number(ethers.formatUnits(it.value || "0", dec)) });
+          erc20.push({ name: t.name || "Unknown", symbol: t.symbol || "?", address: t.address_hash, iconUrl: t.icon_url || null, rate: t.exchange_rate ? Number(t.exchange_rate) : null, isScam: !!t.is_scam, amount: Number(ethers.formatUnits(it.value || "0", dec)) });
         } else if (t.type === "ERC-721" || t.type === "ERC-1155") {
           nfts.push({ address: t.address_hash, count: Number(it.value || "1") });
         }
@@ -558,14 +614,32 @@
     } catch { return { erc20: [], nfts: [] }; }
   }
 
-  // ---- recent transactions ----
+  // ---- recent transactions (keep a wider sample for quality metrics) ----
   async function fetchTxs(addr) {
     try {
       const res = await fetch(`${NET.explorerApi}/addresses/${addr}/transactions`);
       if (!res.ok) throw new Error("explorer " + res.status);
       const data = await res.json();
-      return (data.items || []).slice(0, 10);
+      return (data.items || []).slice(0, 50);
     } catch { return []; }
+  }
+
+  // ---- aggregate counters (total tx, token transfers, gas units) ----
+  async function fetchCounters(addr) {
+    try {
+      const res = await fetch(`${NET.explorerApi}/addresses/${addr}/counters`);
+      if (!res.ok) throw new Error("explorer " + res.status);
+      return await res.json();
+    } catch { return {}; }
+  }
+
+  // ---- address info (reputation / scam / verified) ----
+  async function fetchAddressInfo(addr) {
+    try {
+      const res = await fetch(`${NET.explorerApi}/addresses/${addr}`);
+      if (!res.ok) throw new Error("explorer " + res.status);
+      return await res.json();
+    } catch { return {}; }
   }
 
   // ---- NFT gallery (instances with images) ----
@@ -666,21 +740,66 @@
   }
 
   // ---- health score + donut gauge ----
-  function renderHealth(balance, nonce, assets) {
-    const nft = assets.nfts.reduce((s, n) => s + (n.count || 1), 0);
-    const factors = [
-      { label: "Native balance", on: balance > 0, pts: balance > 0 ? 25 : 0 },
-      { label: `Tx history (${nonce})`, on: nonce > 0, pts: nonce >= 50 ? 30 : nonce >= 10 ? 22 : nonce >= 1 ? 12 : 0 },
-      { label: `ERC-20 tokens (${assets.erc20.length})`, on: assets.erc20.length > 0, pts: assets.erc20.length >= 3 ? 25 : assets.erc20.length > 0 ? 15 : 0 },
-      { label: `NFTs (${nft})`, on: nft > 0, pts: nft > 0 ? 20 : 0 },
-    ];
-    const score = Math.min(100, factors.reduce((s, f) => s + f.pts, 0));
-    let label, color, note;
-    if (score >= 75) { label = "Healthy"; color = "var(--green)"; note = "Active wallet with solid balance & assets."; }
-    else if (score >= 40) { label = "Moderate"; color = "var(--amber)"; note = "Medium activity/assets on Arc testnet."; }
-    else if (score > 0) { label = "Low"; color = "var(--red)"; note = "Minimal activity or balance."; }
-    else { label = "Empty"; color = "var(--muted)"; note = "No balance or activity yet."; }
+  // ---- shared transaction stats over the fetched sample ----
+  function txStats(txs, me) {
+    const sample = txs || [];
+    let failed = 0, gasWei = 0n, inflow = 0, outflow = 0;
+    const peers = new Set(), methods = {};
+    for (const t of sample) {
+      if (t.status && t.status !== "ok") failed++;
+      try { if (t.fee && t.fee.value) gasWei += BigInt(t.fee.value); } catch {}
+      const from = ((t.from && t.from.hash) || "").toLowerCase();
+      const to = ((t.to && t.to.hash) || (t.created_contract && t.created_contract.hash) || "").toLowerCase();
+      const val = Number(ethers.formatUnits(t.value || "0", NET.decimals));
+      if (to === me) inflow += val;
+      if (from === me) outflow += val;
+      const other = from === me ? to : from;
+      if (other && other !== me) peers.add(other);
+      const m = t.method || (t.created_contract ? "Contract Creation" : (val > 0 ? "Transfer" : "Call"));
+      methods[m] = (methods[m] || 0) + 1;
+    }
+    const ts = sample.map((t) => (t.timestamp ? new Date(t.timestamp).getTime() : 0)).filter(Boolean).sort((a, b) => a - b);
+    const top = Object.entries(methods).sort((a, b) => b[1] - a[1])[0];
+    return {
+      n: sample.length, failed, ok: sample.length - failed,
+      successRate: sample.length ? (sample.length - failed) / sample.length : null,
+      gasUsdc: Number(ethers.formatUnits(gasWei, NET.decimals)),
+      avgGasUsdc: sample.length ? Number(ethers.formatUnits(gasWei, NET.decimals)) / sample.length : 0,
+      inflow, outflow, peers: peers.size,
+      topMethod: top ? top[0] : "—", firstMs: ts[0] || 0, lastMs: ts[ts.length - 1] || 0,
+    };
+  }
+  const clamp100 = (n) => Math.max(0, Math.min(100, Math.round(n)));
 
+  // ---- doctor: gauge + vitals + notes + safety ----
+  function renderDoctor(ctx) {
+    const { balance, assets, txs, counters, info } = ctx;
+    const me = ctx.addr.toLowerCase();
+    const st = txStats(txs, me);
+    const txTotal = Number(counters.transactions_count || ctx.nonce || 0);
+    const tokens = assets.erc20.length;
+    const nft = assets.nfts.reduce((s, n) => s + (n.count || 1), 0);
+    const collections = new Set(assets.nfts.map((n) => n.address)).size;
+    const now = Date.now();
+    const ageDays = st.firstMs ? (now - st.firstMs) / 86400000 : 0;
+    const idleDays = st.lastMs ? (now - st.lastMs) / 86400000 : Infinity;
+
+    const recencyMul = idleDays > 30 ? 0.5 : idleDays > 7 ? 0.8 : 1;
+    const vitals = [
+      { k: "Activity", v: clamp100(Math.min(100, txTotal * 4) * recencyMul), c: "var(--accent)" },
+      { k: "Holdings", v: clamp100((balance > 0 ? 40 : 0) + Math.min(40, tokens * 15) + (nft > 0 ? 20 : 0)), c: "var(--green)" },
+      { k: "Diversity", v: clamp100(tokens * 15 + collections * 10 + st.peers * 5), c: "var(--purple)" },
+      { k: "Longevity", v: clamp100(ageDays * 2), c: "#22d3ee" },
+      { k: "Reliability", v: st.successRate == null ? 0 : clamp100(st.successRate * 100), c: "var(--amber)" },
+    ];
+    const w = { Activity: 0.25, Holdings: 0.2, Diversity: 0.15, Longevity: 0.15, Reliability: 0.25 };
+    const score = clamp100(vitals.reduce((s, v) => s + v.v * w[v.k], 0));
+
+    let label, color;
+    if (score >= 75) { label = "Healthy"; color = "var(--green)"; }
+    else if (score >= 40) { label = "Moderate"; color = "var(--amber)"; }
+    else if (score > 0) { label = "Low"; color = "var(--red)"; }
+    else { label = "Empty"; color = "var(--muted)"; }
     countUp($("hScore"), score);
     const arc = $("gaugeArc"), C = 2 * Math.PI * 44;
     arc.style.strokeDasharray = C;
@@ -689,8 +808,70 @@
     const badge = $("badge");
     badge.className = "badge " + (score >= 75 ? "active" : score >= 40 ? "new" : "empty");
     badge.textContent = label;
-    $("verdictText").textContent = note;
-    $("hFactors").innerHTML = factors.map((f) => `<span class="factor ${f.on ? "on" : "off"}"><span class="fi">${f.on ? "✓" : "✗"}</span> ${escapeHtml(f.label)}</span>`).join("");
+    $("verdictText").textContent = score >= 75 ? "Wallet sehat — aktivitas & aset solid."
+      : score >= 40 ? "Kondisi sedang — masih bisa ditingkatkan."
+      : score > 0 ? "Aktivitas / aset masih minim." : "Belum ada aktivitas.";
+    $("hFactors").innerHTML = [
+      { l: "Balance", on: balance > 0 }, { l: "Tx " + txTotal, on: txTotal > 0 },
+      { l: "Tokens " + tokens, on: tokens > 0 }, { l: "NFTs " + nft, on: nft > 0 },
+    ].map((f) => `<span class="factor ${f.on ? "on" : "off"}"><span class="fi">${f.on ? "✓" : "✗"}</span> ${escapeHtml(f.l)}</span>`).join("");
+
+    $("vitals").innerHTML = vitals.map((v) =>
+      `<div class="vital"><span class="vn">${v.k}</span><div class="vbar"><div class="vfill" style="background:${v.c}"></div></div><span class="vv">${v.v}</span></div>`
+    ).join("");
+    requestAnimationFrame(() => $("vitals").querySelectorAll(".vfill").forEach((el, i) => { el.style.width = vitals[i].v + "%"; }));
+
+    const ageStr = txTotal === 0 ? "—" : ageDays >= 1 ? Math.round(ageDays) + "d" : "<1d";
+    const idleStr = idleDays === Infinity ? "—" : idleDays < 1 ? timeAgo(new Date(st.lastMs).toISOString()) : Math.round(idleDays) + "d ago";
+    $("dxMeta").innerHTML =
+      `<span class="dx-chip">Age <b>${ageStr}</b></span>` +
+      `<span class="dx-chip">Last active <b>${idleStr}</b></span>` +
+      `<span class="dx-chip">Tx <b>${txTotal.toLocaleString("en-US")}</b></span>`;
+
+    const notes = [];
+    if (info.is_scam) notes.push("🚨 Address ditandai <b>SCAM</b> oleh explorer — hati-hati.");
+    if (txTotal === 0) notes.push("🌱 Belum ada transaksi — coba <b>Test Transaction</b> untuk memulai.");
+    if (balance === 0) notes.push("💧 Saldo gas 0 USDC — isi via <a href='https://faucet.circle.com' target='_blank' rel='noopener'>faucet.circle.com</a>.");
+    if (st.failed > 0) notes.push(`⚠️ <b>${st.failed}</b> dari ${st.n} tx terakhir gagal — periksa gas/nonce.`);
+    if (tokens === 0) notes.push("🪙 Belum memegang token ERC-20 — pertimbangkan diversifikasi.");
+    if (nft === 0) notes.push("🖼️ Belum memegang NFT.");
+    if (txTotal > 0 && ageDays < 7) notes.push(`👶 Wallet baru (${ageStr}).`);
+    if (idleDays !== Infinity && idleDays > 30) notes.push(`💤 Tidak aktif ${Math.round(idleDays)} hari.`);
+    if (!notes.length) notes.push("✅ Sehat! Aktivitas, saldo, & aset solid. Pertahankan.");
+    $("dxNotes").innerHTML = notes.slice(0, 4).map((n) => `<li>${n}</li>`).join("");
+
+    const scamTokens = assets.erc20.filter((t) => t.isScam).length;
+    const noPrice = assets.erc20.filter((t) => !t.rate).length;
+    const sf = [];
+    sf.push(info.is_scam ? `<span class="sf bad">🚨 Reputasi: scam</span>` : `<span class="sf ok">🛡️ Reputasi: bersih</span>`);
+    if (scamTokens) sf.push(`<span class="sf bad">⚠️ ${scamTokens} token spam</span>`);
+    if (noPrice) sf.push(`<span class="sf warn">❓ ${noPrice} token tanpa harga</span>`);
+    if (!scamTokens && !noPrice && tokens) sf.push(`<span class="sf ok">✓ token bersih</span>`);
+    $("dxSafety").innerHTML = sf.join("");
+  }
+
+  // ---- transaction quality tiles ----
+  function renderTxQuality(ctx) {
+    const me = ctx.addr.toLowerCase();
+    const st = txStats(ctx.txs, me);
+    const txTotal = Number(ctx.counters.transactions_count || ctx.nonce || 0);
+    const net = st.inflow - st.outflow;
+    const srate = st.successRate == null ? "—" : Math.round(st.successRate * 100) + "%";
+    const tiles = [
+      { l: "Total Tx", v: txTotal.toLocaleString("en-US"), sub: st.n + " analyzed" },
+      { l: "Success rate", v: srate, sub: `${st.ok}/${st.n} ok${st.failed ? " · " + st.failed + " failed" : ""}` },
+      { l: "Gas burned", v: formatNum(st.gasUsdc), unit: "USDC", sub: "avg " + formatNum(st.avgGasUsdc) + "/tx" },
+      { l: "Inflow", v: "+" + formatNum(st.inflow), unit: "USDC", cls: "pos" },
+      { l: "Outflow", v: "−" + formatNum(st.outflow), unit: "USDC", cls: "neg" },
+      { l: "Net flow", v: (net >= 0 ? "+" : "−") + formatNum(Math.abs(net)), unit: "USDC", cls: net >= 0 ? "pos" : "neg" },
+      { l: "Counterparties", v: st.peers, sub: "unique peers" },
+      { l: "Top method", v: st.topMethod, small: true },
+    ];
+    $("qGrid").innerHTML = tiles.map((t) =>
+      `<div class="qtile"><div class="ql">${escapeHtml(t.l)}</div>` +
+      `<div class="qv ${t.cls || ""}"${t.small ? ' style="font-size:0.98rem"' : ""}>${escapeHtml(String(t.v))}${t.unit ? ` <small>${t.unit}</small>` : ""}</div>` +
+      (t.sub ? `<div class="qsub">${escapeHtml(t.sub)}</div>` : "") + `</div>`
+    ).join("");
   }
 
   // ================= LEADERBOARD =================
