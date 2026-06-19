@@ -307,6 +307,23 @@
   @keyframes pop { 0% { transform: scale(.96); } 50% { transform: scale(1.03); } 100% { transform: scale(1); } }
   #fx { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 9999; display: none; }
 
+  /* toast notifications (bottom-right) */
+  .toast-wrap { position: fixed; right: 20px; bottom: 20px; z-index: 10000; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; pointer-events: none; }
+  .toast { pointer-events: auto; display: flex; align-items: center; gap: 12px; min-width: 230px; max-width: 340px; padding: 13px 16px; border-radius: 12px; background: var(--panel-solid); border: 1px solid var(--border); box-shadow: 0 14px 36px rgba(0,0,0,0.45); font-weight: 700; font-size: 0.9rem; cursor: pointer; transform: translateX(130%); opacity: 0; animation: toastIn .45s cubic-bezier(.2,.85,.25,1) forwards; overflow: hidden; }
+  .toast.out { animation: toastOut .38s ease forwards; }
+  .toast .ti { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex: none; }
+  .toast .tmsg small { display: block; color: var(--muted); font-weight: 500; font-size: 0.74rem; margin-top: 2px; }
+  .toast.ok { border-color: rgba(46,204,113,0.45); }
+  .toast.ok .ti { background: rgba(46,204,113,0.18); color: var(--green); }
+  .toast.err { border-color: rgba(231,76,60,0.45); }
+  .toast.err .ti { background: rgba(231,76,60,0.18); color: #ff7a6b; }
+  .toast::after { content: ""; position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; transform-origin: left; background: currentColor; opacity: 0.5; animation: toastBar 3.6s linear forwards; }
+  .toast.ok::after { color: var(--green); } .toast.err::after { color: #ff7a6b; }
+  @keyframes toastIn { from { transform: translateX(130%); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes toastOut { from { transform: none; opacity: 1; } to { transform: translateX(130%); opacity: 0; } }
+  @keyframes toastBar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+  @media (prefers-reduced-motion: reduce) { .toast { animation: none; transform: none; opacity: 1; } .toast::after { animation: none; } }
+
   /* leaderboard */
   .lb { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; margin-top: 22px; }
   .lb-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
@@ -344,6 +361,7 @@
 <body>
 <div class="aurora"><span class="a1"></span><span class="a2"></span><span class="a3"></span></div>
 <canvas id="fx"></canvas>
+<div id="toastWrap" class="toast-wrap"></div>
 
 <div class="theme-area"><button class="theme-btn" id="themeBtn" title="Toggle theme">🌙</button></div>
 
@@ -447,7 +465,7 @@
       <div class="nft-more" id="nftMoreWrap"></div>
     </div>
 
-    <div class="card full" style="margin-bottom:14px; --acc:#b07cff">
+    <div class="card full" style="margin-top:16px; margin-bottom:14px; --acc:#b07cff">
       <div class="clabel">On-chain Actions <span class="act-note">(runs from the connected wallet)</span></div>
       <div id="factoryBar" class="factory-bar"></div>
       <div class="act-grid">
@@ -995,7 +1013,18 @@
     if (code !== undefined && code !== null) parts.push("(" + code + ")");
     return parts.join(" ");
   }
-  function actStatus(html, type) { const el = $("actStatus"); el.className = "act-status " + (type || ""); el.innerHTML = html; if (type === "ok") celebrate(); }
+  function actStatus(html, type) { const el = $("actStatus"); el.className = "act-status " + (type || ""); el.innerHTML = html; if (type === "ok") { celebrate(); toast("ok", "Transaction success", "Confirmed on Arc testnet"); } }
+  // bottom-right toast notification
+  function toast(type, title, sub) {
+    const wrap = $("toastWrap"); if (!wrap) return;
+    const el = document.createElement("div");
+    el.className = "toast " + type;
+    el.innerHTML = `<span class="ti">${type === "ok" ? "✓" : "✕"}</span><div class="tmsg">${escapeHtml(title)}${sub ? `<small>${escapeHtml(sub)}</small>` : ""}</div>`;
+    wrap.appendChild(el);
+    const dismiss = () => { if (el.classList.contains("out")) return; el.classList.add("out"); el.addEventListener("animationend", () => el.remove(), { once: true }); };
+    const timer = setTimeout(dismiss, 3600);
+    el.addEventListener("click", () => { clearTimeout(timer); dismiss(); });
+  }
   function actBusy(on) { ["actToken", "actNft", "actTx", "tkSubmit", "nfSubmit", "actFactory"].forEach((id) => { const el = $(id); if (el) el.disabled = on; }); }
   // Pull a created-contract address out of a factory tx receipt's event logs.
   function eventAddress(contract, rcpt, eventName, field) {
@@ -1027,7 +1056,7 @@
       await c.waitForDeployment();
       const addr = await c.getAddress();
       actStatus(`✅ ArcFactory deployed at ${addrLink(addr)} · ${txLink(tx.hash, "view tx")}<br><b>Copy this address</b> and set it as <code>FACTORY_ADDRESS</code> in index.html, then redeploy.`, "ok");
-    } catch (e) { console.error("ArcFactory deploy error:", e); actStatus("❌ Factory deploy failed: " + escapeHtml(errMsg(e)), "err"); }
+    } catch (e) { console.error("ArcFactory deploy error:", e); toast("err", "Transaction failed"); actStatus("❌ Factory deploy failed: " + escapeHtml(errMsg(e)), "err"); }
     finally { actBusy(false); }
   }
   // Warn early if the connected wallet has no USDC for gas on Arc testnet.
@@ -1085,7 +1114,7 @@
       $("formToken").classList.remove("show");
       actStatus(`✅ Token <b>${escapeHtml(symbol)}</b> deployed at ${addr ? addrLink(addr) : "—"} · ${txLink(tx.hash, "view tx")}`, "ok");
       if (ownViewing()) checkWallet();
-    } catch (e) { console.error("Token deploy error:", e); actStatus("❌ Deploy failed: " + escapeHtml(errMsg(e)), "err"); }
+    } catch (e) { console.error("Token deploy error:", e); toast("err", "Transaction failed"); actStatus("❌ Deploy failed: " + escapeHtml(errMsg(e)), "err"); }
     finally { actBusy(false); }
   }
 
@@ -1116,7 +1145,7 @@
       $("formNft").classList.remove("show");
       actStatus(`✅ NFT #1 minted to your wallet. Collection ${addr ? addrLink(addr) : "—"} · ${txLink(tx.hash, "view tx")}`, "ok");
       if (ownViewing()) checkWallet();
-    } catch (e) { console.error("NFT mint error:", e); actStatus("❌ Mint failed: " + escapeHtml(errMsg(e)), "err"); }
+    } catch (e) { console.error("NFT mint error:", e); toast("err", "Transaction failed"); actStatus("❌ Mint failed: " + escapeHtml(errMsg(e)), "err"); }
     finally { actBusy(false); }
   }
 
@@ -1130,7 +1159,7 @@
       const r = await tx.wait();
       actStatus(`✅ Transaction succeeded in block #${r.blockNumber} · ${txLink(tx.hash, "view tx")}`, "ok");
       if (ownViewing()) checkWallet();
-    } catch (e) { console.error("Test tx error:", e); actStatus("❌ Failed: " + escapeHtml(errMsg(e)), "err"); }
+    } catch (e) { console.error("Test tx error:", e); toast("err", "Transaction failed"); actStatus("❌ Failed: " + escapeHtml(errMsg(e)), "err"); }
     finally { actBusy(false); }
   }
 
