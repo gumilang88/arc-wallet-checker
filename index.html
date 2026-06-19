@@ -201,6 +201,18 @@
   .qtile .qv small { font-size: 0.72rem; color: var(--muted); font-weight: 500; }
   .qtile .qsub { font-size: 0.72rem; color: var(--muted); margin-top: 3px; }
   .qv.pos { color: var(--green); } .qv.neg { color: #ff7a6b; }
+
+  /* achievements / badges */
+  .badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .badge-item { display: flex; align-items: center; gap: 11px; padding: 11px 13px; border-radius: 11px; background: var(--panel-2); border: 1px solid var(--border); transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
+  .badge-item.earned { border-color: color-mix(in srgb, var(--amber) 50%, var(--border)); animation: badgePop .45s cubic-bezier(.2,.8,.25,1.2) both; }
+  .badge-item.earned:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(241,196,15,0.14); }
+  .badge-item.locked { opacity: .42; filter: grayscale(0.9); }
+  .badge-ic { font-size: 1.5rem; line-height: 1; flex: none; }
+  .badge-tx .bn { font-size: 0.85rem; font-weight: 700; }
+  .badge-tx .bd { font-size: 0.7rem; color: var(--muted); margin-top: 1px; }
+  @keyframes badgePop { from { opacity: 0; transform: translateY(10px) scale(.9); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .badge-item.earned { animation: none; } }
   .qtile { transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
   .qtile:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--acc, var(--accent)) 50%, var(--border)); box-shadow: 0 8px 20px rgba(0,0,0,0.25); }
   .notes { border-left: 2px solid color-mix(in srgb, var(--acc, var(--accent)) 45%, var(--border)); padding-left: 12px; }
@@ -439,6 +451,11 @@
       </div>
     </div>
 
+    <div class="section" style="--acc:#f1c40f">
+      <div class="clabel">🏅 Achievements (<span id="badgeCount">0</span>/<span id="badgeTotal">0</span>)</div>
+      <div class="badges" id="badges"></div>
+    </div>
+
     <div class="cards">
       <div class="card" style="--acc:#2ecc71">
         <div class="clabel">Native Balance</div>
@@ -624,6 +641,7 @@
       const ctx = { addr, balance: balanceNum, nonce, assets, txs, counters, info };
       renderDoctor(ctx);
       renderTxQuality(ctx);
+      renderBadges(ctx);
     } catch (e) {
       showError("Failed to fetch data: " + (e.shortMessage || e.message || e));
       $("result").classList.remove("show");
@@ -643,6 +661,7 @@
     $("vitals").innerHTML = Array.from({ length: 5 }, () => '<div class="skeleton sk-line"></div>').join("");
     $("qGrid").innerHTML = Array.from({ length: 8 }, () => '<div class="skeleton sk-tile" style="aspect-ratio:auto;height:64px"></div>').join("");
     $("dxMeta").innerHTML = ""; $("dxNotes").innerHTML = ""; $("dxSafety").innerHTML = "";
+    $("badges").innerHTML = Array.from({ length: 8 }, () => '<div class="skeleton sk-line" style="height:46px"></div>').join("");
   }
 
   // ---- assets (ERC-20 + NFT counts) ----
@@ -984,6 +1003,36 @@
       `<div class="qv ${t.cls || ""}"${t.small ? ' style="font-size:0.98rem"' : ""}>${escapeHtml(String(t.v))}${t.unit ? ` <small>${t.unit}</small>` : ""}</div>` +
       (t.sub ? `<div class="qsub">${escapeHtml(t.sub)}</div>` : "") + `</div>`
     ).join("");
+  }
+
+  // ---- achievements / badges ----
+  function renderBadges(ctx) {
+    const me = ctx.addr.toLowerCase();
+    const st = txStats(ctx.txs, me);
+    const txTotal = Number(ctx.counters.transactions_count || ctx.nonce || 0);
+    const tokens = ctx.assets.erc20.length;
+    const nft = ctx.assets.nfts.reduce((s, n) => s + (n.count || 1), 0);
+    const ageDays = st.firstMs ? (Date.now() - st.firstMs) / 86400000 : 0;
+    const idleDays = st.lastMs ? (Date.now() - st.lastMs) / 86400000 : Infinity;
+    const deployed = ctx.txs.some((t) => t.created_contract || /create|deploy/i.test(t.method || ""));
+    const defs = [
+      { ic: "🏭", n: "Deployer", d: "Deployed a contract", on: deployed },
+      { ic: "⚡", n: "Active Trader", d: "25+ transactions", on: txTotal >= 25 },
+      { ic: "🎖️", n: "Veteran", d: "30+ days old", on: ageDays >= 30 },
+      { ic: "🧺", n: "Diversified", d: "Holds 3+ tokens", on: tokens >= 3 },
+      { ic: "🖼️", n: "Collector", d: "Holds an NFT", on: nft >= 1 },
+      { ic: "✅", n: "Reliable", d: "5+ txs, 0 failed", on: st.n >= 5 && st.failed === 0 },
+      { ic: "🤝", n: "Connector", d: "10+ counterparties", on: st.peers >= 10 },
+      { ic: "🔥", n: "Fresh Activity", d: "Active within 24h", on: idleDays < 1 },
+    ];
+    $("badgeCount").textContent = defs.filter((b) => b.on).length;
+    $("badgeTotal").textContent = defs.length;
+    let d = 0;
+    $("badges").innerHTML = defs.map((b) => {
+      const delay = b.on ? (d++ * 0.06).toFixed(2) : "0";
+      return `<div class="badge-item ${b.on ? "earned" : "locked"}" style="animation-delay:${delay}s" title="${escapeHtml(b.d)}">` +
+        `<span class="badge-ic">${b.ic}</span><div class="badge-tx"><div class="bn">${escapeHtml(b.n)}</div><div class="bd">${escapeHtml(b.d)}</div></div></div>`;
+    }).join("");
   }
 
   // ================= LEADERBOARD =================
