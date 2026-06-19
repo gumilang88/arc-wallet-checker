@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Arc Testnet — Wallet Health Checker</title>
 <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
-<script src="contracts.js?v=2"></script>
+<script src="contracts.js?v=3"></script>
 <style>
   :root {
     --page-bg: radial-gradient(1200px 600px at 50% -10%, #101d30 0%, #070a10 60%);
@@ -705,7 +705,16 @@
   // ================= ON-CHAIN ACTIONS =================
   const txLink = (h, label) => `<a href="${NET.explorer}/tx/${h}" target="_blank" rel="noopener">${label || short(h)}</a>`;
   const addrLink = (a) => `<a href="${NET.explorer}/address/${a}" target="_blank" rel="noopener">${short(a)}</a>`;
-  const errMsg = (e) => e.shortMessage || e.info?.error?.message || e.reason || e.message || String(e);
+  function errMsg(e) {
+    const inner = e?.info?.error?.message || e?.error?.message || e?.data?.message;
+    const code = e?.info?.error?.code ?? e?.error?.code ?? e?.code;
+    const parts = [];
+    if (e?.shortMessage) parts.push(e.shortMessage);
+    if (inner && inner !== e?.shortMessage) parts.push("— " + inner);
+    if (!parts.length) parts.push(e?.reason || e?.message || String(e));
+    if (code !== undefined && code !== null) parts.push("(" + code + ")");
+    return parts.join(" ");
+  }
   function actStatus(html, type) { const el = $("actStatus"); el.className = "act-status " + (type || ""); el.innerHTML = html; if (type === "ok") celebrate(); }
   function actBusy(on) { ["actToken", "actNft", "actTx", "tkSubmit", "nfSubmit", "actFactory"].forEach((id) => { const el = $(id); if (el) el.disabled = on; }); }
   // Pull a created-contract address out of a factory tx receipt's event logs.
@@ -727,6 +736,7 @@
   async function deployFactory() {
     if (!window.ARC_CONTRACTS || !ARC_CONTRACTS.factory) { return actStatus("Contracts not loaded (stale cache). Hard-refresh with <b>Ctrl+Shift+R</b> and try again.", "err"); }
     const signer = await getSigner(); if (!signer) return;
+    if (!(await hasGas())) return;
     actBusy(true);
     try {
       const f = new ethers.ContractFactory(ARC_CONTRACTS.factory.abi, ARC_CONTRACTS.factory.bytecode, signer);
@@ -737,8 +747,19 @@
       await c.waitForDeployment();
       const addr = await c.getAddress();
       actStatus(`✅ ArcFactory deployed at ${addrLink(addr)} · ${txLink(tx.hash, "view tx")}<br><b>Copy this address</b> and set it as <code>FACTORY_ADDRESS</code> in index.html, then redeploy.`, "ok");
-    } catch (e) { actStatus("❌ Factory deploy failed: " + escapeHtml(errMsg(e)), "err"); }
+    } catch (e) { console.error("ArcFactory deploy error:", e); actStatus("❌ Factory deploy failed: " + escapeHtml(errMsg(e)), "err"); }
     finally { actBusy(false); }
+  }
+  // Warn early if the connected wallet has no USDC for gas on Arc testnet.
+  async function hasGas() {
+    try {
+      const bal = await provider.getBalance(account);
+      if (bal === 0n) {
+        actStatus("Your wallet has <b>0 USDC</b> for gas on Arc testnet. Get test USDC at <a href='https://faucet.circle.com' target='_blank' rel='noopener'>faucet.circle.com</a> (select Arc Testnet), then retry.", "warn");
+        return false;
+      }
+      return true;
+    } catch { return true; } // if the check itself fails, don't block the attempt
   }
   const ownViewing = () => account && $("rAddr").textContent.toLowerCase() === account.toLowerCase();
 
@@ -784,7 +805,7 @@
       $("formToken").classList.remove("show");
       actStatus(`✅ Token <b>${escapeHtml(symbol)}</b> deployed at ${addr ? addrLink(addr) : "—"} · ${txLink(tx.hash, "view tx")}`, "ok");
       if (ownViewing()) checkWallet();
-    } catch (e) { actStatus("❌ Deploy failed: " + escapeHtml(errMsg(e)), "err"); }
+    } catch (e) { console.error("Token deploy error:", e); actStatus("❌ Deploy failed: " + escapeHtml(errMsg(e)), "err"); }
     finally { actBusy(false); }
   }
 
@@ -815,7 +836,7 @@
       $("formNft").classList.remove("show");
       actStatus(`✅ NFT #1 minted to your wallet. Collection ${addr ? addrLink(addr) : "—"} · ${txLink(tx.hash, "view tx")}`, "ok");
       if (ownViewing()) checkWallet();
-    } catch (e) { actStatus("❌ Mint failed: " + escapeHtml(errMsg(e)), "err"); }
+    } catch (e) { console.error("NFT mint error:", e); actStatus("❌ Mint failed: " + escapeHtml(errMsg(e)), "err"); }
     finally { actBusy(false); }
   }
 
@@ -829,7 +850,7 @@
       const r = await tx.wait();
       actStatus(`✅ Transaction succeeded in block #${r.blockNumber} · ${txLink(tx.hash, "view tx")}`, "ok");
       if (ownViewing()) checkWallet();
-    } catch (e) { actStatus("❌ Failed: " + escapeHtml(errMsg(e)), "err"); }
+    } catch (e) { console.error("Test tx error:", e); actStatus("❌ Failed: " + escapeHtml(errMsg(e)), "err"); }
     finally { actBusy(false); }
   }
 
