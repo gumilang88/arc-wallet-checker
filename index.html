@@ -408,38 +408,6 @@
       </div>
     </div>
 
-    <div class="card full" style="margin-bottom:14px; --acc:#b07cff">
-      <div class="clabel">On-chain Actions <span class="act-note">(runs from the connected wallet)</span></div>
-      <div id="factoryBar" class="factory-bar"></div>
-      <div class="act-grid">
-        <button class="act-btn" id="actToken" type="button">🪙 Deploy Token</button>
-        <button class="act-btn" id="actNft" type="button">🖼️ Mint NFT</button>
-        <button class="act-btn" id="actTx" type="button">⚡ Test Transaction</button>
-      </div>
-      <div class="act-form" id="formToken">
-        <div class="af-row">
-          <label>Token Name <input id="tkName" type="text" value="Arc Test Token" maxlength="40" /></label>
-          <label>Symbol <input id="tkSym" type="text" value="ATT" maxlength="11" /></label>
-        </div>
-        <label>Total Supply <input id="tkSupply" type="text" inputmode="numeric" value="1000000" /></label>
-        <div class="af-actions">
-          <button class="af-submit" id="tkSubmit" type="button">Deploy 🚀</button>
-          <button class="af-cancel" id="tkCancel" type="button">Cancel</button>
-        </div>
-      </div>
-      <div class="act-form" id="formNft">
-        <div class="af-row">
-          <label>Collection Name <input id="nfName" type="text" value="Arc Test NFT" maxlength="40" /></label>
-          <label>Symbol <input id="nfSym" type="text" value="ANFT" maxlength="11" /></label>
-        </div>
-        <div class="af-actions">
-          <button class="af-submit" id="nfSubmit" type="button">Mint 🚀</button>
-          <button class="af-cancel" id="nfCancel" type="button">Cancel</button>
-        </div>
-      </div>
-      <div class="act-status" id="actStatus"></div>
-    </div>
-
     <div class="cards">
       <div class="card" style="--acc:#2ecc71">
         <div class="cicon">💰</div>
@@ -475,6 +443,38 @@
       <div class="clabel">NFT Gallery (<span id="nftGalCount">0</span>)</div>
       <div class="nft-grid" id="nftGrid"></div>
       <div class="nft-more" id="nftMoreWrap"></div>
+    </div>
+
+    <div class="card full" style="margin-bottom:14px; --acc:#b07cff">
+      <div class="clabel">On-chain Actions <span class="act-note">(runs from the connected wallet)</span></div>
+      <div id="factoryBar" class="factory-bar"></div>
+      <div class="act-grid">
+        <button class="act-btn" id="actToken" type="button">🪙 Deploy Token</button>
+        <button class="act-btn" id="actNft" type="button">🖼️ Mint NFT</button>
+        <button class="act-btn" id="actTx" type="button">⚡ Test Transaction</button>
+      </div>
+      <div class="act-form" id="formToken">
+        <div class="af-row">
+          <label>Token Name <input id="tkName" type="text" value="Arc Test Token" maxlength="40" /></label>
+          <label>Symbol <input id="tkSym" type="text" value="ATT" maxlength="11" /></label>
+        </div>
+        <label>Total Supply <input id="tkSupply" type="text" inputmode="numeric" value="1000000" /></label>
+        <div class="af-actions">
+          <button class="af-submit" id="tkSubmit" type="button">Deploy 🚀</button>
+          <button class="af-cancel" id="tkCancel" type="button">Cancel</button>
+        </div>
+      </div>
+      <div class="act-form" id="formNft">
+        <div class="af-row">
+          <label>Collection Name <input id="nfName" type="text" value="Arc Test NFT" maxlength="40" /></label>
+          <label>Symbol <input id="nfSym" type="text" value="ANFT" maxlength="11" /></label>
+        </div>
+        <div class="af-actions">
+          <button class="af-submit" id="nfSubmit" type="button">Mint 🚀</button>
+          <button class="af-cancel" id="nfCancel" type="button">Cancel</button>
+        </div>
+      </div>
+      <div class="act-status" id="actStatus"></div>
     </div>
 
     <div class="section" style="--acc:#22d3ee">
@@ -605,7 +605,7 @@
   }
 
   function showSkeletons() {
-    $("nftGrid").innerHTML = Array.from({ length: 5 }, () => '<div class="skeleton sk-tile"></div>').join("");
+    $("nftGrid").innerHTML = Array.from({ length: 8 }, () => '<div class="skeleton sk-tile"></div>').join("");
     $("nftMoreWrap").innerHTML = "";
     $("txList").innerHTML = Array.from({ length: 5 }, () => '<div class="skeleton sk-line"></div>').join("");
     $("rTokens").innerHTML = "";
@@ -685,7 +685,7 @@
     if (!u) return null;
     return u.startsWith("ipfs://") ? "https://dweb.link/ipfs/" + u.slice(7) : u;
   }
-  const NFT_PREVIEW = 5;
+  const NFT_PREVIEW = 8;
   let galleryItems = [], galleryExpanded = false;
   function nftTile(it) {
     const t = it.token || {};
@@ -895,10 +895,10 @@
     const scamTokens = assets.erc20.filter((t) => t.isScam).length;
     const noPrice = assets.erc20.filter((t) => !t.rate).length;
     const sf = [];
-    sf.push(info.is_scam ? `<span class="sf bad">🚨 Reputasi: scam</span>` : `<span class="sf ok">🛡️ Reputasi: bersih</span>`);
-    if (scamTokens) sf.push(`<span class="sf bad">⚠️ ${scamTokens} token spam</span>`);
-    if (noPrice) sf.push(`<span class="sf warn">❓ ${noPrice} token tanpa harga</span>`);
-    if (!scamTokens && !noPrice && tokens) sf.push(`<span class="sf ok">✓ token bersih</span>`);
+    sf.push(info.is_scam ? `<span class="sf bad">🚨 Reputation: scam</span>` : `<span class="sf ok">🛡️ Reputation: clean</span>`);
+    if (scamTokens) sf.push(`<span class="sf bad">⚠️ ${scamTokens} spam token${scamTokens === 1 ? "" : "s"}</span>`);
+    if (noPrice) sf.push(`<span class="sf warn">❓ ${noPrice} token${noPrice === 1 ? "" : "s"} without price</span>`);
+    if (!scamTokens && !noPrice && tokens) sf.push(`<span class="sf ok">✓ tokens clean</span>`);
     $("dxSafety").innerHTML = sf.join("");
   }
 
