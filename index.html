@@ -192,6 +192,14 @@
   .qtile .qv small { font-size: 0.72rem; color: var(--muted); font-weight: 500; }
   .qtile .qsub { font-size: 0.72rem; color: var(--muted); margin-top: 3px; }
   .qv.pos { color: var(--green); } .qv.neg { color: #ff7a6b; }
+  .qtile { transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
+  .qtile:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--acc, var(--accent)) 50%, var(--border)); box-shadow: 0 8px 20px rgba(0,0,0,0.25); }
+  .notes { border-left: 2px solid color-mix(in srgb, var(--acc, var(--accent)) 45%, var(--border)); padding-left: 12px; }
+  .notes li a { color: var(--accent); text-decoration: none; }
+  .vital .vfill { filter: saturate(1.1); }
+  /* address as a slim header card */
+  .addr-card .cval { font-size: 1.05rem; }
+  .addr-card .clabel { margin-bottom: 6px; }
 
   .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; position: relative; z-index: 3; }
   /* smooth hover highlight on list rows */
@@ -354,6 +362,12 @@
   <div id="error" class="error" style="display:none"></div>
 
   <div id="result">
+    <div class="card full addr-card" style="--acc:#4f9dff; margin-bottom:14px">
+      <div class="clabel">Address</div>
+      <div class="cval addr" id="rAddr">—</div>
+      <a id="rExplorer" target="_blank" rel="noopener">View on Arcscan ↗</a>
+    </div>
+
     <div class="health">
       <div class="gauge">
         <svg viewBox="0 0 104 104">
@@ -415,11 +429,6 @@
     </div>
 
     <div class="cards">
-      <div class="card full" style="--acc:#4f9dff">
-        <div class="clabel">Address</div>
-        <div class="cval addr" id="rAddr">—</div>
-        <a id="rExplorer" target="_blank" rel="noopener">View on Arcscan ↗</a>
-      </div>
       <div class="card" style="--acc:#2ecc71">
         <div class="cicon">💰</div>
         <div class="clabel">Native Balance</div>
@@ -450,14 +459,14 @@
       </div>
     </div>
 
-    <div class="section" style="--acc:#22d3ee">
-      <div class="clabel">📊 Transaction Quality</div>
-      <div class="qgrid" id="qGrid"></div>
-    </div>
-
     <div class="section" style="--acc:#f1c40f">
       <div class="clabel">NFT Gallery (<span id="nftGalCount">0</span>)</div>
       <div class="nft-grid" id="nftGrid"></div>
+    </div>
+
+    <div class="section" style="--acc:#22d3ee">
+      <div class="clabel">📊 Transaction Quality</div>
+      <div class="qgrid" id="qGrid"></div>
     </div>
 
     <div class="section" style="--acc:#2ecc71">
@@ -824,7 +833,6 @@
     const ageStr = txTotal === 0 ? "—" : ageDays >= 1 ? Math.round(ageDays) + "d" : "<1d";
     const idleStr = idleDays === Infinity ? "—" : idleDays < 1 ? timeAgo(new Date(st.lastMs).toISOString()) : Math.round(idleDays) + "d ago";
     $("dxMeta").innerHTML =
-      `<span class="dx-chip">Age <b>${ageStr}</b></span>` +
       `<span class="dx-chip">Last active <b>${idleStr}</b></span>` +
       `<span class="dx-chip">Tx <b>${txTotal.toLocaleString("en-US")}</b></span>`;
 
