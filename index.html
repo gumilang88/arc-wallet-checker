@@ -246,8 +246,8 @@
   .nft-ph { width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #04121f; background: linear-gradient(135deg,var(--accent),var(--purple)); }
   .nft-cap { padding: 6px 8px; font-size: 0.72rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .nft-cap small { color: var(--muted); }
-  .nft-more { display: flex; justify-content: center; margin-top: 12px; }
-  .nft-more:empty { margin-top: 0; }
+  .nft-more, .tx-more { display: flex; justify-content: center; margin-top: 12px; }
+  .nft-more:empty, .tx-more:empty { margin-top: 0; }
   .more-btn { display: inline-flex; align-items: center; gap: 8px; background: var(--panel-2); border: 1px solid var(--border); color: var(--text); border-radius: 999px; padding: 8px 18px; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: border-color .2s ease, transform .15s ease, box-shadow .2s ease, background .2s ease; }
   .more-btn:hover { border-color: var(--accent); transform: translateY(-1px); box-shadow: 0 6px 18px rgba(79,157,255,0.18); background: color-mix(in srgb, var(--accent) 10%, var(--panel-2)); }
   .more-btn:active { transform: translateY(0); }
@@ -257,7 +257,9 @@
   @keyframes nftOut { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(8px) scale(.94); } }
   .nft-tile.nft-in { animation: nftIn .4s cubic-bezier(.2,.7,.2,1) both; }
   .nft-tile.nft-out { animation: nftOut .26s ease both; pointer-events: none; }
-  @media (prefers-reduced-motion: reduce) { .nft-tile.nft-in, .nft-tile.nft-out { animation: none; } .more-caret { transition: none; } }
+  .tx-row.row-in { animation: nftIn .35s cubic-bezier(.2,.7,.2,1) both; }
+  .tx-row.row-out { animation: nftOut .24s ease both; pointer-events: none; }
+  @media (prefers-reduced-motion: reduce) { .nft-tile.nft-in, .nft-tile.nft-out, .tx-row.row-in, .tx-row.row-out { animation: none; } .more-caret { transition: none; } }
 
   .tx-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border); }
   .tx-row:first-of-type { border-top: none; }
@@ -485,6 +487,7 @@
     <div class="section" style="--acc:#2ecc71">
       <div class="clabel">Recent Transactions</div>
       <div id="txList"></div>
+      <div class="tx-more" id="txMoreWrap"></div>
     </div>
   </div>
 
@@ -608,6 +611,7 @@
     $("nftGrid").innerHTML = Array.from({ length: 8 }, () => '<div class="skeleton sk-tile"></div>').join("");
     $("nftMoreWrap").innerHTML = "";
     $("txList").innerHTML = Array.from({ length: 5 }, () => '<div class="skeleton sk-line"></div>').join("");
+    $("txMoreWrap").innerHTML = "";
     $("rTokens").innerHTML = "";
     $("tokBtnLabel").textContent = "…";
     $("vitals").innerHTML = Array.from({ length: 5 }, () => '<div class="skeleton sk-line"></div>').join("");
@@ -740,28 +744,58 @@
     if (s < 86400) return Math.floor(s / 3600) + "h ago";
     return Math.floor(s / 86400) + "d ago";
   }
+  const TX_PREVIEW = 5;
+  let txItems = [], txMe = "", txExpanded = false;
+  function txRow(it) {
+    const out = (it.from && it.from.hash || "").toLowerCase() === txMe;
+    const cp = it.created_contract ? it.created_contract.hash : (it.to && it.to.hash);
+    const method = it.method || (it.created_contract ? "Contract Creation" : (Number(it.value) > 0 ? "Transfer" : "Call"));
+    const val = Number(ethers.formatUnits(it.value || "0", NET.decimals));
+    const failed = it.status && it.status !== "ok";
+    return `<div class="tx-row">
+      <span class="tx-dir ${out ? "out" : "in"}">${out ? "OUT" : "IN"}</span>
+      <div class="tx-main">
+        <div class="tx-method">${escapeHtml(method)}</div>
+        <div class="tx-sub">${cp ? short(cp) : "—"} · <a href="${NET.explorer}/tx/${it.hash}" target="_blank" rel="noopener">${short(it.hash)}</a></div>
+      </div>
+      <div class="tx-right">
+        <div class="tx-val">${val > 0 ? (out ? "-" : "+") + formatNum(val) + " USDC" : "—"}</div>
+        <div class="tx-time">${timeAgo(it.timestamp)}${failed ? ' · <span class="tx-fail">failed</span>' : ""}</div>
+      </div>
+    </div>`;
+  }
   function renderTxs(items, addr) {
+    txItems = items; txMe = addr.toLowerCase(); txExpanded = false;
+    const box = $("txList"), wrap = $("txMoreWrap");
+    if (!items.length) { box.innerHTML = '<div class="empty-note">No transactions found.</div>'; wrap.innerHTML = ""; return; }
+    box.innerHTML = items.slice(0, TX_PREVIEW).map(txRow).join("");
+    updateTxMoreBtn();
+  }
+  function updateTxMoreBtn() {
+    const wrap = $("txMoreWrap");
+    if (txItems.length <= TX_PREVIEW) { wrap.innerHTML = ""; return; }
+    wrap.innerHTML = `<button class="more-btn ${txExpanded ? "up" : ""}" id="txMore" type="button"><span>${txExpanded ? "Show less" : "Show all " + txItems.length}</span><span class="more-caret">▾</span></button>`;
+    $("txMore").addEventListener("click", toggleTxs);
+  }
+  function toggleTxs() {
     const box = $("txList");
-    if (!items.length) { box.innerHTML = '<div class="empty-note">No transactions found.</div>'; return; }
-    const me = addr.toLowerCase();
-    box.innerHTML = items.map((it) => {
-      const out = (it.from && it.from.hash || "").toLowerCase() === me;
-      const cp = it.created_contract ? it.created_contract.hash : (it.to && it.to.hash);
-      const method = it.method || (it.created_contract ? "Contract Creation" : (Number(it.value) > 0 ? "Transfer" : "Call"));
-      const val = Number(ethers.formatUnits(it.value || "0", NET.decimals));
-      const failed = it.status && it.status !== "ok";
-      return `<div class="tx-row">
-        <span class="tx-dir ${out ? "out" : "in"}">${out ? "OUT" : "IN"}</span>
-        <div class="tx-main">
-          <div class="tx-method">${escapeHtml(method)}</div>
-          <div class="tx-sub">${cp ? short(cp) : "—"} · <a href="${NET.explorer}/tx/${it.hash}" target="_blank" rel="noopener">${short(it.hash)}</a></div>
-        </div>
-        <div class="tx-right">
-          <div class="tx-val">${val > 0 ? (out ? "-" : "+") + formatNum(val) + " USDC" : "—"}</div>
-          <div class="tx-time">${timeAgo(it.timestamp)}${failed ? ' · <span class="tx-fail">failed</span>' : ""}</div>
-        </div>
-      </div>`;
-    }).join("");
+    if (!txExpanded) {
+      txExpanded = true;
+      const tmp = document.createElement("div");
+      tmp.innerHTML = txItems.slice(TX_PREVIEW).map(txRow).join("");
+      Array.from(tmp.children).forEach((el, i) => {
+        el.classList.add("row-in");
+        el.style.animationDelay = (i * 0.03).toFixed(2) + "s";
+        box.appendChild(el);
+      });
+    } else {
+      txExpanded = false;
+      Array.from(box.children).slice(TX_PREVIEW).forEach((el) => {
+        el.classList.add("row-out");
+        el.addEventListener("animationend", () => el.remove(), { once: true });
+      });
+    }
+    updateTxMoreBtn();
   }
 
   let heldTokens = [];
